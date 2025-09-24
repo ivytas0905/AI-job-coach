@@ -1,7 +1,25 @@
 'use client';
 import { UserButton } from "@clerk/nextjs";
+import { useState } from 'react'; 
 
 export default function Dashboard() {
+  const [showLeetCodeModal, setShowLeetCodeModal] = useState(false);
+  const [leetCodePrefs, setLeetCodePrefs] = useState({
+    dailyQuestions: 2,
+    difficulty: 'Medium'
+  });
+
+  // 添加处理函数
+  const handleLeetCodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('LeetCode preferences:', leetCodePrefs);
+    generateDailyProblems();
+    setShowLeetCodeModal(false);
+  };
+
+  const generateDailyProblems = () => {
+    alert(`Generated ${leetCodePrefs.dailyQuestions} ${leetCodePrefs.difficulty} problems for today!`);
+  };
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 顶部导航 */}
@@ -60,6 +78,35 @@ export default function Dashboard() {
                 className="bg-white text-purple-600 font-bold py-4 px-8 rounded-xl hover:bg-gray-100 transition-all duration-200 transform hover:scale-105 shadow-lg"
               >
                 Generate Today&apos;s Schedule
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 新增的 LeetCode 功能卡片 */}
+        <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl p-6 text-white mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center mb-4">
+                <div className="bg-white/20 p-3 rounded-full mr-4">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">💻 Daily Coding Practice</h3>
+                  <p className="text-white/90">
+                    Stay sharp with personalized coding challenges - essential for tech job interviews
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="ml-6">
+              <button 
+                onClick={() => setShowLeetCodeModal(true)}
+                className="bg-white text-red-600 font-bold py-3 px-6 rounded-lg hover:bg-gray-100 transition-all duration-200"
+              >
+                Setup Daily Problems
               </button>
             </div>
           </div>
@@ -145,6 +192,85 @@ export default function Dashboard() {
           </button>
         </div>
       </main>
+    
+    
+      {/* LeetCode 设置弹窗 */}
+        {showLeetCodeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Setup Daily Coding Practice</h2>
+              <button
+                onClick={() => setShowLeetCodeModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleLeetCodeSubmit} className="space-y-6">
+              {/* 每日题目数量 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  How many problems per day?
+                </label>
+                <select
+                  value={leetCodePrefs.dailyQuestions}
+                  onChange={(e) => setLeetCodePrefs({...leetCodePrefs, dailyQuestions: parseInt(e.target.value)})}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value={1}>1 problem</option>
+                  <option value={2}>2 problems</option>
+                  <option value={3}>3 problems</option>
+                  <option value={5}>5 problems</option>
+                </select>
+              </div>
+
+              {/* 难度偏好 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Preferred difficulty level
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {['Easy', 'Medium', 'Hard'].map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => setLeetCodePrefs({...leetCodePrefs, difficulty: level})}
+                      className={`p-3 rounded-lg border-2 transition-colors ${
+                        leetCodePrefs.difficulty === level
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 提交按钮 */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowLeetCodeModal(false)}
+                  className="flex-1 py-3 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Generate Problems
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
