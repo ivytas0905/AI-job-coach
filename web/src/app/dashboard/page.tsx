@@ -59,7 +59,7 @@ export default function Dashboard() {
                 onClick={() => window.location.href = '/daily-schedule'}
                 className="bg-white text-purple-600 font-bold py-4 px-8 rounded-xl hover:bg-gray-100 transition-all duration-200 transform hover:scale-105 shadow-lg"
               >
-                Generate Today's Schedule
+                Generate Today&apos;s Schedule
               </button>
             </div>
           </div>
