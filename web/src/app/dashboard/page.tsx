@@ -8,7 +8,7 @@ export default function Dashboard() {
     dailyQuestions: 2,
     difficulty: 'Medium'
   });
-  const [isLoading, setIsLoading] = useState(false)
+  //const [isLoading, setIsLoading] = useState(false)
   const [generatedProblems, setGeneratedProblems] = useState<any[]>([]);
   // 添加处理函数
   const handleLeetCodeSubmit = (e: React.FormEvent) => {
@@ -20,7 +20,7 @@ export default function Dashboard() {
 
   const generateDailyProblems = async () => {
   try {
-    setIsLoading(true);
+    //setIsLoading(true);
     const response = await fetch('/api/leetcode', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -41,10 +41,10 @@ export default function Dashboard() {
     setGeneratedProblems(problems);
     alert(`Generated ${problems.length} ${leetCodePrefs.difficulty} problems!`);
     
-  } catch (error) {
+  } catch  {
     alert('Error generating problems');
   } finally {
-    setIsLoading(false);
+    //setIsLoading(false);
   }
 };
   return (
