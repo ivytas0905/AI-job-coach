@@ -8,7 +8,8 @@ export default function Dashboard() {
     dailyQuestions: 2,
     difficulty: 'Medium'
   });
-
+  const [isLoading, setIsLoading] = useState(false)
+  const [generatedProblems, setGeneratedProblems] = useState<any[]>([]);
   // 添加处理函数
   const handleLeetCodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,9 +18,35 @@ export default function Dashboard() {
     setShowLeetCodeModal(false);
   };
 
-  const generateDailyProblems = () => {
-    alert(`Generated ${leetCodePrefs.dailyQuestions} ${leetCodePrefs.difficulty} problems for today!`);
-  };
+  const generateDailyProblems = async () => {
+  try {
+    setIsLoading(true);
+    const response = await fetch('/api/leetcode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        difficulty: leetCodePrefs.difficulty,
+        count: leetCodePrefs.dailyQuestions
+      })
+    });
+    
+    const problems = await response.json();
+    
+    if (problems.error) {
+      alert('Failed to generate problems. Please try again.');
+      return;
+    }
+    
+    // 显示生成的题目
+    setGeneratedProblems(problems);
+    alert(`Generated ${problems.length} ${leetCodePrefs.difficulty} problems!`);
+    
+  } catch (error) {
+    alert('Error generating problems');
+  } finally {
+    setIsLoading(false);
+  }
+};
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 顶部导航 */}
@@ -250,6 +277,24 @@ export default function Dashboard() {
                   ))}
                 </div>
               </div>
+              {generatedProblems.length > 0 && (
+               <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-semibold mb-3">Today's Problems:</h4>
+                 {generatedProblems.map((problem, index) => (
+                    <div key={problem.questionId} className="flex justify-between items-center py-2 border-b last:border-b-0">
+                      <span className="font-medium">{index + 1}. {problem.title}</span>
+                      <a 
+                         href={`https://leetcode.com/problems/${problem.titleSlug}/`}
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         className="text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                         Solve →
+                     </a>
+                 </div>
+               ))}
+            </div>
+          )}
 
               {/* 提交按钮 */}
               <div className="flex gap-3 pt-4">
