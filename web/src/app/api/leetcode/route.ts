@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export async function POST(request: Request) {
   const { difficulty, count } = await request.json();
   
