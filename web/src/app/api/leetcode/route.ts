@@ -59,7 +59,7 @@ const variables = {
     const selected = shuffled.slice(0, count);
     
     return Response.json(selected);
-  } catch (error) {
+  } catch  {
     return Response.json({ error: 'Failed to fetch problems' }, { status: 500 });
   }
 }

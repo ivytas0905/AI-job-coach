@@ -279,7 +279,7 @@ export default function Dashboard() {
               </div>
               {generatedProblems.length > 0 && (
                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-semibold mb-3">Today's Problems:</h4>
+                <h4 className="font-semibold mb-3">Today&apos;s Problems:</h4>
                  {generatedProblems.map((problem, index) => (
                     <div key={problem.questionId} className="flex justify-between items-center py-2 border-b last:border-b-0">
                       <span className="font-medium">{index + 1}. {problem.title}</span>
