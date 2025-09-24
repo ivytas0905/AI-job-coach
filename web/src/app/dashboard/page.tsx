@@ -1,7 +1,4 @@
-"use client";
-//import React from 'react'
-//import { currentUser } from "@clerk/nextjs/server"
-
+'use client';
 import { UserButton } from "@clerk/nextjs";
 
 export default function Dashboard() {
@@ -31,6 +28,41 @@ export default function Dashboard() {
           <p className="text-gray-600">
             Your personal career coach is ready to help optimize your job search journey!
           </p>
+        </div>
+
+        {/* Core Feature - Daily Schedule Generator */}
+        <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl p-8 text-white mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center mb-4">
+                <div className="bg-white/20 p-3 rounded-full mr-4">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">🚀 Daily Job Search Schedule</h2>
+                  <p className="text-white/90 text-lg">
+                    Get your personalized daily action plan - our signature feature that sets you apart from other job seekers
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3 mb-6">
+                <div className="bg-white/10 px-3 py-1 rounded-full text-sm">✅ Personalized Tasks</div>
+                <div className="bg-white/10 px-3 py-1 rounded-full text-sm">⏰ Time-blocked Schedule</div>
+                <div className="bg-white/10 px-3 py-1 rounded-full text-sm">🎯 Goal-oriented</div>
+                <div className="bg-white/10 px-3 py-1 rounded-full text-sm">📊 Progress Tracking</div>
+              </div>
+            </div>
+            <div className="ml-6">
+              <button 
+                onClick={() => window.location.href = '/daily-schedule'}
+                className="bg-white text-purple-600 font-bold py-4 px-8 rounded-xl hover:bg-gray-100 transition-all duration-200 transform hover:scale-105 shadow-lg"
+              >
+                Generate Today's Schedule
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Feature Cards */}
@@ -101,15 +133,15 @@ export default function Dashboard() {
 
         {/* Quick Action Section */}
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 text-white">
-          <h3 className="text-xl font-bold mb-2">Start Your Career Journey</h3>
+          <h3 className="text-xl font-bold mb-2">Need More Support?</h3>
           <p className="mb-4 opacity-90">
-            Not sure where to begin? Let your AI coach create a personalized job search plan for you
+            Chat with your AI coach for additional guidance and motivation
           </p>
           <button 
             onClick={() => window.location.href = '/chat'}
             className="bg-white text-blue-600 font-semibold py-2 px-6 rounded-md hover:bg-gray-100 transition-colors"
           >
-            Get Career Advice
+            Chat with AI Coach
           </button>
         </div>
       </main>
