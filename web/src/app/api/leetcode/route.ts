@@ -53,6 +53,13 @@ const variables = {
     
     const data = await response.json();
     const problems = data.data.problemsetQuestionList.questions;
+
+    const formattedProblems = problems.map((p: any) => ({
+  questionId: p.frontendQuestionId,  // 映射字段名
+  title: p.title,
+  titleSlug: p.titleSlug,
+  difficulty: p.difficulty
+}));
     
     // 随机选择题目
     const shuffled = problems.sort(() => 0.5 - Math.random());
