@@ -2,8 +2,10 @@
 'use client';
 import { UserButton } from "@clerk/nextjs";
 import { useState } from 'react'; 
+import {useEffect} from 'react';
 
 export default function Dashboard() {
+  
   const [showLeetCodeModal, setShowLeetCodeModal] = useState(false);
   const [leetCodePrefs, setLeetCodePrefs] = useState({
     dailyQuestions: 2,
@@ -11,6 +13,33 @@ export default function Dashboard() {
   });
   //const [isLoading, setIsLoading] = useState(false)
   const [generatedProblems, setGeneratedProblems] = useState<any[]>([]);
+
+  //添加音乐播放
+  useEffect(() => {
+     // 页面加载完成后播放欢迎音乐
+        playWelcomeMusic();
+    }, []); // 空依赖数组，只在组件首次挂载时执行
+
+    // 音乐播放函数
+    const playWelcomeMusic = () => {
+        const audio = new Audio('/welcome.mp3');
+        audio.volume = 0.25; // 25%音量
+        
+        audio.play().catch(error => {
+            console.log('自动播放被浏览器阻止:', error);
+            // 可以选择显示播放提示，或者静默处理
+        });
+        
+        // 播放完成后清理
+        audio.addEventListener('ended', function() {
+            console.log('欢迎音乐播放完成');
+        });
+
+        // 错误处理
+        audio.addEventListener('error', function(e) {
+            console.error('音频加载失败:', e);
+        });
+    };
   // 添加处理函数
   const handleLeetCodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
