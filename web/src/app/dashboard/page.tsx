@@ -210,10 +210,9 @@ export default function Dashboard() {
               Upload your resume and get AI-powered analysis with targeted optimization suggestions
             </p>
             <button 
-              onClick={() => window.location.href = '/resume'}
+              onClick={handleOptimizeResume}
               className="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition-colors"
             >
-              <button onClick={handleOptimizeResume}></button>
               Optimize Resume
             </button>
           </div>
