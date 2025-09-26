@@ -3,6 +3,7 @@
 import { UserButton } from "@clerk/nextjs";
 import { useState } from 'react'; 
 import {useEffect} from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
   
@@ -13,7 +14,10 @@ export default function Dashboard() {
   });
   //const [isLoading, setIsLoading] = useState(false)
   const [generatedProblems, setGeneratedProblems] = useState<any[]>([]);
-
+  const router = useRouter();
+  const handleOptimizeResume = () => {
+     router.push('/dashboard/resume');
+   };
   //添加音乐播放
   useEffect(() => {
      // 页面加载完成后播放欢迎音乐
@@ -209,6 +213,7 @@ export default function Dashboard() {
               onClick={() => window.location.href = '/resume'}
               className="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition-colors"
             >
+              <button onClick={handleOptimizeResume}></button>
               Optimize Resume
             </button>
           </div>
