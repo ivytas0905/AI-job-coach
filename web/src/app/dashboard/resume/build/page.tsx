@@ -24,7 +24,7 @@ export default function BuildResumePage() {
 
   const handleSelectTemplate = (templateId: string) => {
     // 选择模板后，跳转到表单页面
-    router.push(`/build-resume/form/${templateId}`);
+    router.push(`/dashboard/resume/build/form/${templateId}`);
   };
 
   return (
