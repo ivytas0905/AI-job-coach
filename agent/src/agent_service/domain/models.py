@@ -1,7 +1,20 @@
 from dataclasses import dataclass
 from typing import List, Optional, Dict
 from dataclasses import field
+from enum import Enum
 
+
+class ResumeSource(Enum):
+    """简历来源"""
+    BUILT = "built_from_scratch"
+    UPLOADED = "uploaded_file"
+
+class ExperienceType(Enum):
+    """经历类型"""
+    WORK = "work"
+    INTERNSHIP = "internship"
+    PROJECT = "project"
+    VOLUNTEER = "volunteer"
 
 
 @dataclass
@@ -28,6 +41,8 @@ class Experience:
 class Education:
     school: Optional[str] = None
     degree: Optional[str] = None
+    major: Optional[str] = None  
+    gpa: Optional[float] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     description: Optional[str] = None
