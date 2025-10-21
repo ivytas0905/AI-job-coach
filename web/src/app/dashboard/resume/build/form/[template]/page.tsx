@@ -1,12 +1,12 @@
-
+"use client"
 import { useState } from 'react';
-import { useRouter } from 'next/router';
-import { ContactStep } from '../components/steps/ContactStep';
-import { ExperienceStep } from '../components/steps/ExperienceStep';
-import { EducationStep } from '../components/steps/EducationStep';
-import { SkillsStep } from '../components/steps/SkillsStep';
-import { SummaryStep } from '../components/steps/SummaryStep';
-import { ResumePreview } from '../components/ResumePreview';
+import { useRouter, useParams } from 'next/navigation';
+import { ContactStep } from '../../components/steps/ContactStep';
+import { ExperienceStep } from '../../components/steps/ExperienceStep';
+import { EducationStep } from '../../components/steps/EducationStep';
+import { SkillsStep } from '../../components/steps/SkillsStep';
+import { SummaryStep } from '../../components/steps/SummaryStep';
+import { ResumePreview } from '../../components/ResumePreview';
 
 export interface ResumeData {
   contact: {
@@ -37,7 +37,8 @@ export interface ResumeData {
 
 export default function ResumeFormPage() {
   const router = useRouter();
-  const { template } = router.query; // 获取选中的模板
+  const params = useParams();
+  const template = params.template as string;
 
   const [currentStep, setCurrentStep] = useState(0);
   const [resumeData, setResumeData] = useState<ResumeData>({
