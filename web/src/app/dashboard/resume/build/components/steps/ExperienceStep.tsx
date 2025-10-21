@@ -4,7 +4,7 @@ import { ResumeData } from '../../form/[template]';
 
 interface ExperienceStepProps {
   data: ResumeData;
-  onChange: (section: 'experience', data: any) => void;
+  onChange: (section: 'experience', data: unknown) => void;
 }
 
 export function ExperienceStep({ data, onChange }: ExperienceStepProps) {

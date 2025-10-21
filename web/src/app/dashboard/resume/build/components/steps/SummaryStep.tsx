@@ -4,7 +4,7 @@ import { ResumeData } from '../../form/[template]';
 
 interface SummaryStepProps {
   data: ResumeData;
-  onChange: (section: 'summary', data: any) => void;
+  onChange: (section: 'summary', data: unknown) => void;
 }
 
 export function SummaryStep({ data, onChange }: SummaryStepProps) {
@@ -101,7 +101,7 @@ export function SummaryStep({ data, onChange }: SummaryStepProps) {
           💡 Example Summary
         </h3>
         <p className="text-sm text-gray-700 italic">
-          "{exampleSummary}"
+        &quot;{exampleSummary}&quot;
         </p>
       </div>
 

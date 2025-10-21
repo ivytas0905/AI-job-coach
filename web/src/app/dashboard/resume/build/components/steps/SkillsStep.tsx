@@ -4,7 +4,7 @@ import { ResumeData } from '../../form/[template]';
 
 interface SkillsStepProps {
   data: ResumeData;
-  onChange: (section: 'skills', data: any) => void;
+  onChange: (section: 'skills', data: unknown) => void;
 }
 
 export function SkillsStep({ data, onChange }: SkillsStepProps) {
@@ -40,6 +40,7 @@ export function SkillsStep({ data, onChange }: SkillsStepProps) {
   const suggestedSkills = [
     'JavaScript',
     'Python',
+    'C++',
     'React',
     'Node.js',
     'TypeScript',
@@ -63,7 +64,7 @@ export function SkillsStep({ data, onChange }: SkillsStepProps) {
   return (
     <div className="space-y-6">
       <p className="text-sm text-gray-600">
-        Add skills relevant to the job you're applying for. Include both technical skills and soft skills.
+        Add skills relevant to the job you&apos;re applying for. Include both technical skills and soft skills.
       </p>
 
       {/* 输入框 */}

@@ -4,7 +4,7 @@ import { ResumeData } from '../../form/[template]';
 
 interface EducationStepProps {
   data: ResumeData;
-  onChange: (section: 'education', data: any) => void;
+  onChange: (section: 'education', data: unknown) => void;
 }
 
 export function EducationStep({ data, onChange }: EducationStepProps) {
@@ -91,7 +91,7 @@ export function EducationStep({ data, onChange }: EducationStepProps) {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <p className="text-xs text-gray-500 mt-1">
-                e.g., Bachelor's, Master's, PhD
+                e.g., Bachelor&apos;s, Master&apos;s, PhD
               </p>
             </div>
 
@@ -103,7 +103,7 @@ export function EducationStep({ data, onChange }: EducationStepProps) {
                 type="text"
                 value={edu.school}
                 onChange={(e) => handleChange(index, 'school', e.target.value)}
-                placeholder="e.g., Stanford University"
+                placeholder="e.g., Northeastern University"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>

@@ -88,7 +88,7 @@ export default function ResumeFormPage() {
     // router.push('/resume/preview'); // 跳转到预览页或下载页
   };
 
-  const updateResumeData = (section: keyof ResumeData, data: any) => {
+  const updateResumeData = (section: keyof ResumeData, data: unknown) => {
     setResumeData((prev) => ({
       ...prev,
       [section]: data,

@@ -3,7 +3,7 @@ import { ResumeData } from '../../form/[template]';
 
 interface ContactStepProps {
   data: ResumeData;
-  onChange: (section: 'contact', data: any) => void;
+  onChange: (section: 'contact', data: unknown) => void;
 }
 
 export function ContactStep({ data, onChange }: ContactStepProps) {
