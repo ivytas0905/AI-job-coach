@@ -1,5 +1,5 @@
 // pages/build-resume/components/steps/ContactStep.tsx
-import { ResumeData } from '../../form/[template]';
+import { ResumeData } from '../../form/[template]/page';
 
 interface ContactStepProps {
   data: ResumeData;

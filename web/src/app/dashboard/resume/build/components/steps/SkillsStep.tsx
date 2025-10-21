@@ -1,6 +1,6 @@
 // pages/build-resume/components/steps/SkillsStep.tsx
 import { useState, KeyboardEvent } from 'react';
-import { ResumeData } from '../../form/[template]';
+import { ResumeData } from '../../form/[template]/page';
 
 interface SkillsStepProps {
   data: ResumeData;

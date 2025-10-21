@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { ResumeData } from '../../form/[template]';
+import { ResumeData } from '../../form/[template]/page';
 
 interface ExperienceStepProps {
   data: ResumeData;
