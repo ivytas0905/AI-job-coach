@@ -84,9 +84,13 @@ export default function ResumeFormPage() {
   };
 
   const handleFinish = async () => {
-    // TODO: 提交数据到后端
-    console.log('Resume completed:', resumeData);
-    // router.push('/resume/preview'); // 跳转到预览页或下载页
+    console.log('handleFinish called!');  // ← 添加这行调试
+    console.log('Resume data:', resumeData);  // ← 查看数据
+    console.log('Template:', template);  // ← 查看模板
+    //save resume data to localstorage
+    localStorage.setItem('resumeData', JSON.stringify(resumeData));
+    //navigate to preview
+    router.push(`/dashboard/resume/build/preview/${template}`); 
   };
 
   const updateResumeData = (section: keyof ResumeData, data: unknown) => {
