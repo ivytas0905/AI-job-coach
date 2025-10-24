@@ -1,9 +1,9 @@
-from .optimize import OptimizeRequest, OptimizeResponse
-from .resume import ResumeRequest, ResumeResponse
+from .optimize import OptimizeRequestSchema, OptimizeResponseSchema
+from .resume import ParsedResumeSchema
 
 
-__all__ = ["ParsedResume",
-    "AtsScore",
-    "SectionSuggestion",
-    "OptimizeResponse"
+__all__ = [
+    "ParsedResumeSchema",
+    "OptimizeRequestSchema",
+    "OptimizeResponseSchema"
 ]
