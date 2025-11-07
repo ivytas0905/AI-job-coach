@@ -29,8 +29,8 @@ class SkillSchema(BaseModel):
 
 class ParsedResumeSchema(BaseModel):
     personal_info: Optional[PersonalInfoSchema] = None
-    experience: List[ExperienceSchema] = []
-    education: List[EducationSchema] = []
-    skills: List[SkillSchema] = []
+    experience: List[ExperienceSchema] = Field(default_factory=list)
+    education: List[EducationSchema] = Field(default_factory=list)
+    skills: List[SkillSchema] = Field(default_factory=list)
     raw_text: Optional[str] = None
 
