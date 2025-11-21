@@ -25,10 +25,14 @@ export function SummaryStep({ data, onChange }: SummaryStepProps) {
     setEnhancing(true);
 
     try {
-      const response = await fetch('/api/resume/enhance', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/api/resume/enhance-summary`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: summary }),
+        body: JSON.stringify({ summary: summary,
+          targetJob: data.targetJob || undefined,
+          skills: data.skills || undefined,
+         }),
       });
 
       if (!response.ok) {

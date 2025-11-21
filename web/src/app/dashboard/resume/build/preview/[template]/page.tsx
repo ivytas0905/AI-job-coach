@@ -20,38 +20,65 @@ export default function ResumePreviewPage() {
     }
   }, []);
 
-  const handleDownload = async (format: 'pdf' | 'word') => {
-    try {
-      // 调用 Python 后端 API
-      const response = await fetch(`http://localhost:8000/api/resume/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resumeData,
-          template,
-          format
-        }),
-      });
+  
 
-      if (!response.ok) {
-        throw new Error('Failed to generate resume');
-      }
+const handleDownload = async (format: 'pdf' | 'word') => {
+  try {
+    const response = await fetch(`http://localhost:8000/api/resume/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resumeData, template, format }),
+      cache: 'no-store', // 防缓存干扰
+    });
 
-      // 下载文件
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `resume.${format === 'pdf' ? 'pdf' : 'docx'}`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Download failed:', error);
-      alert('Failed to download resume. Please try again.');
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      console.error('Generate failed:', response.status, response.statusText, errText);
+      throw new Error(errText || `Generate failed: ${response.status} ${response.statusText}`);
     }
-    
+
+    // 默认文件名（兜底，避免空）
+    let filename = `resume.${format === 'pdf' ? 'pdf' : 'docx'}`;
+
+    // 优先从 Content-Disposition 取文件名
+    const cd = response.headers.get('Content-Disposition');
+    if (cd) {
+      // 先尝试 filename*=UTF-8''xxx（更可靠，兼容中文）
+      const mUtf8 = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(cd);
+      const mBasic = /filename="([^"]+)"/i.exec(cd);
+      if (mUtf8) {
+        try { filename = decodeURIComponent(mUtf8[1]); } catch { /* ignore */ }
+      } else if (mBasic) {
+        filename = mBasic[1];
+      }
+    } else {
+      // 兜底再看 Content-Type
+      const type = response.headers.get('Content-Type') || '';
+      if (type.includes('pdf')) filename = 'resume.pdf';
+      else if (type.includes('word')) filename = 'resume.docx';
+    }
+
+    // 下载文件
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename; //  这里用解析后的文件名
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+
+    console.log(` Resume downloaded: ${filename}`);
+  } catch (error) {
+    console.error('Download failed:', error);
+    alert('Failed to download resume. Please try again.');
+  } finally {
     setShowDownloadMenu(false);
-  };
+  }
+};
+
 
   if (!resumeData) {
     return (

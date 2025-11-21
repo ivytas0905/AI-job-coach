@@ -19,16 +19,19 @@ class ExperienceType(Enum):
 
 @dataclass
 class PersonalInfo:
-    name: Optional[str] = None
+    fullname: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
+    location: Optional[str] = None
+    title: Optional[str] = None
     linkedin: Optional[str] = None
     github: Optional[str] = None
 
 @dataclass
 class Experience:
-    company: Optional[str] = None
+    type: Optional[str] = None
     title: Optional[str] = None
+    company: Optional[str] = None
     location: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
@@ -45,7 +48,9 @@ class Education:
     gpa: Optional[float] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
-    description: Optional[str] = None
+    location: Optional[str] = None
+   
+    
 
     
 
@@ -59,10 +64,13 @@ class Skill:
 
 @dataclass
 class Resume:
+    source: ResumeSource = ResumeSource.BUILT
     personal_info: Optional[PersonalInfo] = None
     experiences: List[Experience] = field(default_factory=list)
     education: List[Education] = field(default_factory=list)
     skills: List[Skill] = field(default_factory=list)
+    summary: Optional[str] = None
+    target_job: Optional[str] = None
     raw_text: Optional[str] = None
     sections: Dict[str, str] = field(default_factory=dict)
 

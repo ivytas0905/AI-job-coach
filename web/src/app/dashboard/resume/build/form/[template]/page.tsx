@@ -33,6 +33,7 @@ export interface ResumeData {
   }>;
   skills: string[];
   summary: string;
+  targetJob:string;
 }
 
 export default function ResumeFormPage() {
@@ -53,7 +54,11 @@ export default function ResumeFormPage() {
     education: [],
     skills: [],
     summary: '',
+    targetJob: '',
   });
+  
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const steps = [
     { component: ContactStep, title: 'Contact Information' },
@@ -64,6 +69,37 @@ export default function ResumeFormPage() {
   ];
 
   const CurrentStepComponent = steps[currentStep].component;
+  //添加验证函数
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    //validate Contact
+    if (!resumeData.contact.fullName) {
+      newErrors.fullName = 'Full name is required';
+    }
+    if (!resumeData.contact.email) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(resumeData.contact.email)) {
+      newErrors.email = 'Invalid email format';
+    }
+    if(!resumeData.contact.phone) {
+      newErrors.phone = 'Phone is required';
+    }
+    // 此处可不用验证 Experience，不能假定用户一定有工作经验
+    // if (resumeData.experience.length === 0) {
+    //   newErrors.experience = 'Add at least one work experience';
+    // }
+    
+    //validate Education
+    if (resumeData.education.length === 0) {
+      newErrors.education = 'Add at least one education entry';
+    }
+    // 验证 Skills
+    if (resumeData.skills.length === 0) {
+      newErrors.skills = 'Add at least one skill';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
@@ -79,20 +115,91 @@ export default function ResumeFormPage() {
       setCurrentStep(currentStep - 1);
     } else {
       // 第一步返回 = 返回模板选择页
-      router.push('/build-resume');
+      router.push('/dashboard/resume/build');
     }
   };
 
+  // const handleFinish = async () => {
+  //   if(!validateForm()){
+  //     alert('Please fill in all required contents before finishing.');
+  //     return;
+  //   }
+  //   setIsSubmitting(true);
+  //   try {
+  //     // 调用 build API
+  //     const response = await fetch('http://localhost:8000/api/resume/build/', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({
+  //         contact: resumeData.contact,
+  //         experience: resumeData.experience,
+  //         education: resumeData.education,
+  //         skills: resumeData.skills,
+  //         summary: resumeData.summary,
+  //         enhanceWithAI: false
+  //       })
+  //     });
+      
+  //     const result = await response.json();
+      
+  //     if (result.success) {
+  //       // 保存到 localStorage 或 state
+  //       localStorage.setItem('resumeData', JSON.stringify(result.resume));
+        
+  //       // 跳转到预览页面
+  //       router.push(`/dashboard/resume/build/preview/${template}`);
+  //     }
+  //   } catch (error) {
+  //     console.error('Build failed:', error);
+  //   }
+  // };
   const handleFinish = async () => {
-    console.log('handleFinish called!');  // ← 添加这行调试
-    console.log('Resume data:', resumeData);  // ← 查看数据
-    console.log('Template:', template);  // ← 查看模板
-    //save resume data to localstorage
-    localStorage.setItem('resumeData', JSON.stringify(resumeData));
-    //navigate to preview
-    router.push(`/dashboard/resume/build/preview/${template}`); 
+    if(!validateForm()){
+      const errorMessages = Object.values(errors).join('\n');
+      alert(`Please complete the following:\n\n${errorMessages}`);
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      // 👇 在这里添加 log - 构建要发送的数据对象
+      const requestData = {
+        contact: resumeData.contact,
+        experience: resumeData.experience,
+        education: resumeData.education,
+        skills: resumeData.skills,
+        summary: resumeData.summary,
+        enhanceWithAI: false
+      };
+      
+      // 👇 打印查看数据结构
+      console.log('=== 发送到后端的数据 ===');
+      console.log(JSON.stringify(requestData, null, 2));
+      console.log('======================');
+      
+      // 调用 build API
+      const response = await fetch('http://localhost:8000/api/resume/build/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData)  // 
+      });
+      
+      // 👇 也可以看看响应
+      console.log('响应状态:', response.status);
+      const result = await response.json();
+      console.log('响应数据:', result);
+      
+      if (result.success) {
+        localStorage.setItem('resumeData', JSON.stringify(result.resume));
+        router.push(`/dashboard/resume/build/preview/${template}`);
+      }
+    } catch (error) {
+      console.error('Build failed:', error);
+    } finally {
+      setIsSubmitting(false);  // 👈 别忘了重置提交状态
+    }
   };
 
+  
   const updateResumeData = (section: keyof ResumeData, data: unknown) => {
     setResumeData((prev) => ({
       ...prev,

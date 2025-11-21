@@ -4,10 +4,12 @@ import { ResumeData } from '../../form/[template]/page';
 
 interface ExperienceStepProps {
   data: ResumeData;
-  onChange: (section: 'experience', data: unknown) => void;
+  onChange: (section: keyof ResumeData, data: unknown) => void;
+ 
 }
 
 export function ExperienceStep({ data, onChange }: ExperienceStepProps) {
+  const [targetJob, setTargetJobs] = useState(data.targetJob || '')
   const [experiences, setExperiences] = useState(
     data.experience.length > 0
       ? data.experience
@@ -24,6 +26,11 @@ export function ExperienceStep({ data, onChange }: ExperienceStepProps) {
   );
 
   const [enhancing, setEnhancing] = useState<number | null>(null);
+
+  const handleTargetJobChange = (value: string) => {
+    setTargetJobs(value);
+    onChange('targetJob', value);
+  };
 
   const handleChange = (index: number, field: string, value: string) => {
     const updated = [...experiences];
@@ -58,7 +65,9 @@ export function ExperienceStep({ data, onChange }: ExperienceStepProps) {
 
   // AI 优化功能
   const handleAIEnhance = async (index: number) => {
+    const experience = experiences[index];
     const description = experiences[index].description;
+    
     
     if (!description.trim()) {
       alert('Please enter a description first');
@@ -68,10 +77,15 @@ export function ExperienceStep({ data, onChange }: ExperienceStepProps) {
     setEnhancing(index);
 
     try {
-      const response = await fetch('/api/resume/enhance', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/api/resume/enhance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: description }),
+        body: JSON.stringify({ 
+          description: description,
+          jobTitle: experience.position,
+          company: experience.company,
+        }),
       });
 
       if (!response.ok) {
