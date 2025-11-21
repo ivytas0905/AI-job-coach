@@ -26,6 +26,8 @@ class EducationSchema(BaseModel):
 class SkillSchema(BaseModel):
     name: str
     category: Optional[str] = None
+class SummarySchema(BaseModel):
+    raw_text:Optional[str] = None
 
 class ParsedResumeSchema(BaseModel):
     personal_info: Optional[PersonalInfoSchema] = None
