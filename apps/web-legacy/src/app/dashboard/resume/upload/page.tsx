@@ -40,6 +40,7 @@ export default function UploadResumePage() {
   const [parsedData, setParsedData] = useState<ParsedResume | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [isSavingMaster, setIsSavingMaster] = useState(false);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -109,12 +110,88 @@ export default function UploadResumePage() {
       }
 
       const data: ParsedResume = await response.json();
+      console.log('Parsed resume data:', data);
       setParsedData(data);
+
+      // Save parsed resume to session storage for optimization workflow
+      sessionStorage.setItem('parsed_resume', JSON.stringify(data));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred while parsing your resume');
       console.error('Upload error:', err);
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleSaveAsMaster = async () => {
+    if (!parsedData) return;
+
+    setIsSavingMaster(true);
+    setError(null);
+
+    try {
+      // Convert parsed resume to Master Resume format
+      const masterResume = {
+        personal_info: parsedData.personal_info,
+        experiences: parsedData.experience?.map(exp => ({
+          company: exp.company,
+          title: exp.title,
+          location: exp.location,
+          start_date: exp.start_date,
+          end_date: exp.end_date,
+          description: exp.description,
+          bullets: exp.description
+            ? exp.description
+                .split(/[.!]\s+/)
+                .filter(text => text.trim().length > 10)
+                .map(text => ({
+                  text: text.trim().endsWith('.') ? text.trim() : text.trim() + '.',
+                  keywords: [],
+                  skills_used: []
+                }))
+            : [],
+          skills_used: [],
+          industry: ''
+        })) || [],
+        education: parsedData.education?.map(edu => ({
+          school: edu.school,
+          degree: edu.degree,
+          start_date: edu.start_date,
+          end_date: edu.end_date,
+          description: edu.description
+        })) || [],
+        skills: parsedData.skills?.map(skill => ({
+          name: skill.name,
+          category: skill.category || 'general'
+        })) || []
+      };
+
+      const response = await fetch('http://localhost:8000/api/v1/master/resume', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(masterResume),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save Master Resume');
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.master_resume.id) {
+        sessionStorage.setItem('master_resume_id', data.master_resume.id);
+        alert('✅ Master Resume saved successfully! You can now proceed to analyze a Job Description.');
+        router.push('/dashboard/resume/jd-input');
+      } else {
+        throw new Error(data.error || 'Failed to save Master Resume');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred while saving Master Resume');
+      console.error('Save Master error:', err);
+    } finally {
+      setIsSavingMaster(false);
     }
   };
 
@@ -125,12 +202,15 @@ export default function UploadResumePage() {
         <div className="flex items-center justify-between mb-8">
           <button
             onClick={() => router.back()}
-            className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-full hover:bg-opacity-30 transition-all backdrop-blur-sm"
+            className="flex items-center gap-2 bg-white bg-opacity-20 text-white px-6 py-3 rounded-full hover:bg-opacity-30 transition-all backdrop-blur-sm font-medium"
           >
-            ← Back
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span>Back</span>
           </button>
           <h1 className="text-4xl font-bold text-white">Upload & Parse Resume</h1>
-          <div className="w-24"></div>
+          <div className="w-32"></div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -233,7 +313,7 @@ export default function UploadResumePage() {
                 </svg>
                 <p className="text-lg">Upload a resume to see parsed data here</p>
               </div>
-            ) : (
+            ) : parsedData && (parsedData.personal_info || parsedData.experience?.length > 0 || parsedData.education?.length > 0 || parsedData.skills?.length > 0) ? (
               <div className="space-y-6">
                 {/* Personal Info */}
                 {parsedData.personal_info && (
@@ -277,7 +357,16 @@ export default function UploadResumePage() {
                         <p className="font-bold text-gray-800">{exp.title}</p>
                         <p className="text-sm text-gray-600">{exp.company} {exp.location && `• ${exp.location}`}</p>
                         <p className="text-xs text-gray-500">{exp.start_date} - {exp.end_date}</p>
-                        {exp.description && <p className="text-sm text-gray-700 mt-2">{exp.description}</p>}
+                        {exp.description && (
+                          <ul className="mt-2 space-y-1">
+                            {exp.description.split('\n').map((bullet, bIdx) => (
+                              <li key={bIdx} className="text-sm text-gray-700 flex items-start gap-2">
+                                <span className="text-indigo-500 mt-1">•</span>
+                                <span>{bullet}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -299,20 +388,73 @@ export default function UploadResumePage() {
 
                 {/* Skills */}
                 {parsedData.skills && parsedData.skills.length > 0 && (
-                  <div>
+                  <div className="border-b pb-6">
                     <h3 className="text-xl font-bold text-indigo-600 mb-4">Skills</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {parsedData.skills.map((skill, idx) => (
-                        <span
-                          key={idx}
-                          className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium"
-                        >
-                          {skill.name}
-                        </span>
-                      ))}
+                    <div className="space-y-3">
+                      {(() => {
+                        // Group skills by category
+                        const groupedSkills: Record<string, string[]> = {};
+                        parsedData.skills.forEach(skill => {
+                          const category = skill.category || 'Other';
+                          if (!groupedSkills[category]) {
+                            groupedSkills[category] = [];
+                          }
+                          groupedSkills[category].push(skill.name);
+                        });
+
+                        // Render each category
+                        return Object.entries(groupedSkills).map(([category, skills]) => (
+                          <div key={category}>
+                            <p className="text-sm font-semibold text-gray-700 mb-2">{category}:</p>
+                            <div className="flex flex-wrap gap-2 ml-4">
+                              {skills.map((skillName, idx) => (
+                                <span
+                                  key={idx}
+                                  className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium"
+                                >
+                                  {skillName}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   </div>
                 )}
+
+                {/* Save as Master Resume Button */}
+                <button
+                  onClick={handleSaveAsMaster}
+                  disabled={isSavingMaster}
+                  className={`w-full py-4 rounded-full font-bold text-lg transition-all shadow-lg ${
+                    isSavingMaster
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 text-white hover:from-emerald-600 hover:via-green-600 hover:to-teal-600 hover:shadow-xl hover:scale-105'
+                  }`}
+                >
+                  {isSavingMaster ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin h-6 w-6 mr-3" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span className="text-white">Saving Master Resume...</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                      <span>Save as Master Resume</span>
+                    </span>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="text-center text-gray-400 py-20">
+                <p className="text-lg">Resume parsed but no data extracted. Please try a different file.</p>
+                <p className="text-sm mt-2">Make sure your resume contains clear sections for experience, education, and skills.</p>
               </div>
             )}
           </div>
