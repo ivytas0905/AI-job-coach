@@ -1,0 +1,86 @@
+{
+  "categories": {
+    "innovation_creation": {
+      "description": "When your client made a difference or created something new",
+      "verbs": [
+        "Created", "Conceived", "Designed", "Engineered", "Re-engineered",
+        "Generated", "Developed", "Pioneered", "Architected", "Built",
+        "Invented", "Launched", "Originated", "Introduced", "Established"
+      ]
+    },
+    "leadership_initiative": {
+      "description": "When your client is the one who got the ball rolling",
+      "verbs": [
+        "Spearheaded", "Pioneered", "Led", "Launched", "Championed",
+        "Orchestrated", "Drove", "Steered", "Directed", "Commanded",
+        "Mobilized", "Guided", "Helmed", "Accelerated", "Transformed"
+      ]
+    },
+    "management_oversight": {
+      "description": "When your client was the one in charge",
+      "verbs": [
+        "Managed", "Administered", "Directed", "Controlled", "Engineered",
+        "Oversaw", "Supervised", "Coordinated", "Organized", "Governed"
+      ]
+    },
+    "leadership_supervisory": {
+      "description": "When describing leadership and supervisory responsibilities",
+      "verbs": [
+        "Recruited", "Interviewed", "Hired", "Trained", "Supervised",
+        "Mentored", "Coached", "Motivated", "Leveraged", "Developed"
+      ]
+    },
+    "execution_delivery": {
+      "description": "When your client is the one through whom it happened",
+      "verbs": [
+        "Facilitated", "Expedited", "Conducted", "Performed", "Executed",
+        "Delivered", "Implemented", "Deployed", "Established", "Launched",
+        "Rolled out", "Operationalized", "Transitioned", "Achieved"
+      ]
+    },
+    "improvement_optimization": {
+      "description": "When improving or optimizing existing systems/processes",
+      "verbs": [
+        "Improved", "Enhanced", "Optimized", "Streamlined", "Refined",
+        "Transformed", "Modernized", "Revitalized", "Upgraded", "Strengthened",
+        "Boosted", "Accelerated", "Amplified", "Increased", "Maximized"
+      ]
+    },
+    "analysis_research": {
+      "description": "When analyzing data or conducting research",
+      "verbs": [
+        "Analyzed", "Assessed", "Evaluated", "Examined", "Investigated",
+        "Researched", "Studied", "Measured", "Quantified", "Identified",
+        "Inspected", "Reviewed", "Audited", "Diagnosed"
+      ]
+    },
+    "collaboration_facilitation": {
+      "description": "When working with others or enabling collaboration",
+      "verbs": [
+        "Collaborated", "Coordinated", "Facilitated", "Partnered", "Aligned",
+        "Enabled", "Unified", "Integrated", "Synchronized", "Liaised",
+        "Mediated", "Negotiated", "Bridged"
+      ]
+    },
+    "technical_work": {
+      "description": "When performing technical tasks",
+      "verbs": [
+        "Built", "Developed", "Coded", "Programmed", "Engineered",
+        "Configured", "Automated", "Integrated", "Implemented", "Deployed",
+        "Debugged", "Migrated", "Refactored", "Architected"
+      ]
+    }
+  },
+  "usage_rules": [
+    "Use varied verbs - avoid repeating the same verb multiple times",
+    "Choose verbs that accurately reflect the level of contribution",
+    "Match verb intensity to actual responsibility (don't oversell)",
+    "Use present tense for current roles, past tense for previous roles",
+    "Start every bullet point with a strong action verb",
+    "Avoid weak verbs like 'helped', 'worked on', 'responsible for'"
+  ],
+  "avoid_list": [
+    "helped", "worked on", "responsible for", "participated in",
+    "assisted with", "involved in", "contributed to"
+  ]
+}

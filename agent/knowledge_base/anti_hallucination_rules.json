@@ -1,0 +1,96 @@
+{
+  "core_principles": [
+    "NEVER invent facts, numbers, or achievements not present in the original text",
+    "NEVER add specific technologies or tools unless mentioned in the original",
+    "NEVER fabricate metrics or percentages",
+    "ALWAYS base optimizations on information provided by the user",
+    "ALWAYS ask for clarification when information is missing",
+    "ALWAYS preserve the truthfulness of the original statement"
+  ],
+
+  "validation_rules": {
+    "numbers_metrics": {
+      "rule": "Only use numbers that are in the original bullet or explicitly provided by user",
+      "if_missing": "Use placeholders like [X users], [Y%], [Z systems] and ask user to fill in",
+      "examples": {
+        "bad": "Serving 100K users (when original says 'many users')",
+        "good": "Serving [X] users (then ask: How many users?)"
+      }
+    },
+
+    "technologies_tools": {
+      "rule": "Only mention technologies explicitly stated in original or known from context",
+      "if_missing": "Use general terms or ask user what technologies were used",
+      "examples": {
+        "bad": "Built using React and Node.js (when original says 'web application')",
+        "good": "Built web application using [specific framework - please specify]"
+      }
+    },
+
+    "achievements_scope": {
+      "rule": "Don't exaggerate the scope or impact beyond what's stated",
+      "if_missing": "Use conservative language or ask for specifics",
+      "examples": {
+        "bad": "Led enterprise-wide transformation (when original says 'improved process')",
+        "good": "Improved [specific process] (then ask: What was the scope/impact?)"
+      }
+    },
+
+    "time_duration": {
+      "rule": "Only state timeframes if explicitly mentioned",
+      "if_missing": "Omit timeframe or ask user",
+      "examples": {
+        "bad": "Delivered in 2 weeks (when timeline not mentioned)",
+        "good": "Delivered ahead of schedule OR ask: What was the timeline?"
+      }
+    }
+  },
+
+  "hints_to_generate": [
+    {
+      "trigger": "Missing quantification",
+      "hint_template": "💡 Consider adding: How many {users/systems/items} were involved?",
+      "examples": ["How many students used the platform?", "How many queries does it handle?"]
+    },
+    {
+      "trigger": "No percentage improvement",
+      "hint_template": "💡 Consider adding: By what percentage did {metric} improve?",
+      "examples": ["By how much did performance improve?", "What was the time/cost savings?"]
+    },
+    {
+      "trigger": "Vague technology mention",
+      "hint_template": "💡 Consider specifying: Which specific {technology/framework/tool} did you use?",
+      "examples": ["Which ML framework did you use?", "What database technology?"]
+    },
+    {
+      "trigger": "No business impact",
+      "hint_template": "💡 Consider adding: What was the business impact? (revenue, cost savings, user growth)",
+      "examples": ["Did this increase revenue?", "Did this save costs?", "Did this improve user satisfaction?"]
+    },
+    {
+      "trigger": "Team size unknown",
+      "hint_template": "💡 Consider adding: How many people were on the team?",
+      "examples": ["How large was the team you led?", "How many people did you collaborate with?"]
+    },
+    {
+      "trigger": "Timeline unclear",
+      "hint_template": "💡 Consider adding: What was the timeline/duration?",
+      "examples": ["How long did this project take?", "What was the deadline?"]
+    }
+  ],
+
+  "warning_indicators": [
+    "If bullet becomes significantly longer than original: too much added",
+    "If bullet contains multiple new concepts not in original: hallucination risk",
+    "If numbers appear that weren't in original: verify with user first",
+    "If technology stack appears that wasn't mentioned: ask user to confirm"
+  ],
+
+  "safe_improvements": [
+    "Changing weak verb to strong verb (maintain same action)",
+    "Restructuring sentence for clarity (maintain same facts)",
+    "Adding STAR structure (using existing information)",
+    "Incorporating provided keywords (naturally, where accurate)",
+    "Making implicit information explicit (not inventing new info)"
+  ]
+}
