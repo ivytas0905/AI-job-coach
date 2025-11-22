@@ -20,7 +20,9 @@ if REPO_ROOT not in sys.path:
 # ===== 2. 再开始正常的 import =====
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from agent_service.config import get_settings   # 现在这行一定能找到了
+from agent_service.config import get_settings   
+from .config import get_settings
+from .api.routes import parse
 import uvicorn
 from dotenv import load_dotenv
 
@@ -65,6 +67,8 @@ try:
     print("Export routes registered")
 except ImportError as e:
     print(f"Could not import export routes: {e}")
+# Register routes
+app.include_router(parse.router, prefix="/api/v1")
 
 @app.get("/health")
 async def health_check():
@@ -75,7 +79,4 @@ async def health_check():
     }
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=settings.host, port=settings.port, reload=False)
-
-   
-    
+    uvicorn.run("main:app", host=settings.host, port=settings.port, reload=settings.debug)
