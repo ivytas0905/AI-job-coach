@@ -18,6 +18,7 @@ ENV/
 # IDEs
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~
