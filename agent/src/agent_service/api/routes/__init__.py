@@ -1,9 +1,25 @@
-from .build import router as build_router
-from .export import router as export_router
-from .optimize import router as optimize_router
+from . import (
+    build,
+    export,
+    optimize,
+    parse,
+    jd,
+    master,
+    tailor,
+    jd_analysis,
+    resume_optimization,
+    chat_assistant
+)
 
 __all__ = [
-    "build_router",
-    "export_router", 
-    "optimize_router",  
+    "build",
+    "export",
+    "optimize",
+    "parse",
+    "jd",
+    "master",
+    "tailor",
+    "jd_analysis",
+    "resume_optimization",
+    "chat_assistant"
 ]

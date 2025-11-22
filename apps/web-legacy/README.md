@@ -1,3 +1,26 @@
+# Legacy Frontend (Archived)
+
+**⚠️ This directory contains the old frontend code and is no longer actively developed.**
+
+## Purpose
+This code is preserved for reference only. It contains the original implementation of:
+- Resume builder interface
+- Upload and optimization UI
+- Multi-step form components
+- Preview functionality
+
+## New Frontend
+The new frontend is being rebuilt in the `web/` directory with a modern architecture.
+
+## Usage
+You can reference this code for:
+- Understanding old UI/UX patterns
+- Extracting reusable components
+- Comparing implementations
+
+**Do not run or deploy this code.**
+
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
