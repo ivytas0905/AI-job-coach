@@ -1,6 +1,6 @@
 """PDF Parser Implementation"""
 import io
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 
 
 class PDFParser:

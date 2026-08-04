@@ -2,7 +2,7 @@
 Base generator interface
 """
 from abc import ABC, abstractmethod
-from domain.models import Resume
+from ...domain.models import Resume
 
 
 class ResumeGenerator(ABC):

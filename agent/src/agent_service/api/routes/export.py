@@ -7,11 +7,11 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Dict, Any, Literal
 
-from application.use_cases.export_resume import ExportResumeUseCase
-from infra.generators.pdf_generator import PDFGenerator
-from infra.generators.word_generator import WordGenerator
-from domain.models import ResumeSource,Resume, PersonalInfo, Experience, Education, Skill
-from utils.http import content_disposition_for_filename
+from ...application.use_cases.export_resume import ExportResumeUseCase
+from ...infra.generators.pdf_generator import PDFGenerator
+from ...infra.generators.word_generator import WordGenerator
+from ...domain.models import ResumeSource, Resume, PersonalInfo, Experience, Education, Skill
+from ...utils.http import content_disposition_for_filename
 
 router = APIRouter(prefix="/api/resume", tags=["export"])
 

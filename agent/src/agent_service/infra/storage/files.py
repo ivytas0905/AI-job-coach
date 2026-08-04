@@ -1,6 +1,6 @@
 """File Storage Utilities"""
 import os
-import aiofiles
+import asyncio
 from pathlib import Path
 from typing import Tuple
 from ...config import get_settings
@@ -37,8 +37,7 @@ class FileStorage:
         file_path = self.upload_dir / safe_filename
 
         # Write file asynchronously
-        async with aiofiles.open(file_path, 'wb') as f:
-            await f.write(content)
+        await asyncio.to_thread(file_path.write_bytes, content)
 
         return str(file_path)
 
@@ -52,8 +51,7 @@ class FileStorage:
         Returns:
             File content bytes
         """
-        async with aiofiles.open(file_path, 'rb') as f:
-            return await f.read()
+        return await asyncio.to_thread(Path(file_path).read_bytes)
 
     def delete_file(self, file_path: str) -> None:
         """

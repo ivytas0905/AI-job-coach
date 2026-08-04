@@ -6,9 +6,6 @@ from . import (
     jd,
     master,
     tailor,
-    jd_analysis,
-    resume_optimization,
-    chat_assistant
 )
 
 __all__ = [
@@ -19,7 +16,4 @@ __all__ = [
     "jd",
     "master",
     "tailor",
-    "jd_analysis",
-    "resume_optimization",
-    "chat_assistant"
 ]

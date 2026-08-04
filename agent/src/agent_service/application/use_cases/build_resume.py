@@ -1,5 +1,5 @@
-from domain.models import Resume, ResumeSource, PersonalInfo, Experience, Education, Skill, ExperienceType
-from api.schemas.build import BuildResumeRequest
+from ...domain.models import Resume, ResumeSource, PersonalInfo, Experience, Education, Skill, ExperienceType
+from ...api.schemas.build import BuildResumeRequest
 
 class BuildResumeUseCase:
     def __init__(self, llm_service, retriever, template_engine):
