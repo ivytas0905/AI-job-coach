@@ -13,12 +13,15 @@ from ...api.schemas.job_description import JobDescriptionSchema, KeywordWeightSc
 from ...application.use_cases.tailor_resume import TailorResumeUseCase
 from ...domain.models import TailoredResume, JobDescription, MasterResume
 from ...wiring import get_tailor_resume_use_case
+from ...api.auth import UserContext, get_current_user
 
 router = APIRouter(prefix="/tailor", tags=["Tailored Resume"])
 
 # In-memory storage for MVP
 tailored_resumes: Dict[str, TailoredResume] = {}
 job_descriptions: Dict[str, JobDescription] = {}
+job_description_owners: Dict[str, str] = {}
+tailored_resume_owners: Dict[str, str] = {}
 
 # Import master resumes storage from master.py
 from .master import master_resumes
@@ -27,7 +30,8 @@ from .master import master_resumes
 @router.post("/resume", response_model=TailorResumeResponse)
 async def tailor_resume(
     request: TailorResumeRequest,
-    use_case: TailorResumeUseCase = Depends(get_tailor_resume_use_case)
+    use_case: TailorResumeUseCase = Depends(get_tailor_resume_use_case),
+    user: UserContext = Depends(get_current_user),
 ):
     """
     Create a tailored resume from master resume based on JD
@@ -54,13 +58,19 @@ async def tailor_resume(
     """
     try:
         # Get master resume
-        if request.master_resume_id not in master_resumes:
+        if (
+            request.master_resume_id not in master_resumes
+            or master_resumes[request.master_resume_id].user_id != user.subject
+        ):
             raise HTTPException(status_code=404, detail="Master resume not found")
 
         master = master_resumes[request.master_resume_id]
 
         # Get job description
-        if request.jd_id not in job_descriptions:
+        if (
+            request.jd_id not in job_descriptions
+            or job_description_owners.get(request.jd_id) != user.subject
+        ):
             raise HTTPException(status_code=404, detail="Job description not found")
 
         jd = job_descriptions[request.jd_id]
@@ -70,6 +80,7 @@ async def tailor_resume(
 
         # Store tailored resume
         tailored_resumes[tailored.id] = tailored
+        tailored_resume_owners[tailored.id] = user.subject
 
         # Convert to schema
         tailored_schema = _tailored_to_schema(tailored)
@@ -92,7 +103,10 @@ async def tailor_resume(
 
 
 @router.get("/resume/{tailored_id}", response_model=TailoredResumeSchema)
-async def get_tailored_resume(tailored_id: str):
+async def get_tailored_resume(
+    tailored_id: str,
+    user: UserContext = Depends(get_current_user),
+):
     """
     Get a tailored resume by ID
 
@@ -102,7 +116,10 @@ async def get_tailored_resume(tailored_id: str):
     Returns:
         Tailored resume
     """
-    if tailored_id not in tailored_resumes:
+    if (
+        tailored_id not in tailored_resumes
+        or tailored_resume_owners.get(tailored_id) != user.subject
+    ):
         raise HTTPException(status_code=404, detail="Tailored resume not found")
 
     tailored = tailored_resumes[tailored_id]
@@ -135,6 +152,7 @@ def _tailored_to_schema(tailored: TailoredResume) -> TailoredResumeSchema:
 
 
 # Helper function to store JD (called from jd.py route)
-def store_job_description(jd: JobDescription):
+def store_job_description(jd: JobDescription, user: UserContext):
     """Store job description for later use"""
     job_descriptions[jd.id] = jd
+    job_description_owners[jd.id] = user.subject
