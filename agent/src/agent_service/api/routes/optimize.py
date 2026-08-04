@@ -2,10 +2,11 @@
 AI-powered content enhancement endpoint
 Enhances resume bullet points using LLM
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
-from ...infra.llm.togetherai_provider import TogetherProvider
+from ...application.ports.llm import LlmMessage, LlmProvider
+from ...wiring import get_llm_provider
 
 router = APIRouter(prefix = "/api/resume",tags = ["optimize"])
 
@@ -32,7 +33,10 @@ class EnhanceResponse(BaseModel):
 @router.post("/enhance",response_model = EnhanceResponse)
           
 # 完整路径：/api/resume/enhance
-async def enhance_content(request: EnhanceRequest):
+async def enhance_content(
+    request: EnhanceRequest,
+    llm: LlmProvider = Depends(get_llm_provider),
+):
     """
     Enhance work experience description using AI
     
@@ -67,12 +71,12 @@ async def enhance_content(request: EnhanceRequest):
         )
         
         # 3. 调用 LLM
-        llm = TogetherProvider()  
-        enhanced_text = llm.generate(
-            prompt=prompt,
+        result = await llm.complete(
+            [LlmMessage(role="user", content=prompt)],
             max_tokens=1500,
             temperature=0.7
         )
+        enhanced_text = result.text or ""
         
         # 4. 返回结果
         return EnhanceResponse(
@@ -95,7 +99,10 @@ async def enhance_content(request: EnhanceRequest):
 
 #=====summary enhance part=====#
 @router.post("/enhance-summary",response_model = EnhanceResponse)
-async def enhance_summary(request: EnhanceSummaryRequest):
+async def enhance_summary(
+    request: EnhanceSummaryRequest,
+    llm_provider: LlmProvider = Depends(get_llm_provider),
+):
     """
     Enhance professional summary using AI
     
@@ -128,12 +135,12 @@ async def enhance_summary(request: EnhanceSummaryRequest):
             skills=request.skills,
         )
         
-        llm_provider = TogetherProvider()
-        enhanced_text = llm_provider.generate(
-            prompt=prompt,
+        result = await llm_provider.complete(
+            [LlmMessage(role="user", content=prompt)],
             max_tokens=800,  # Summary is shorter
             temperature=0.6
         )
+        enhanced_text = result.text or ""
         
         return EnhanceResponse(
             success=True,
@@ -177,7 +184,7 @@ Original Description:
 
 Enhancement Requirements:
 1. Start with strong action verbs (Developed, Designed, Implemented, Optimized, Led, Increased)
-2. Quantify achievements when possible (add numbers, percentages, timeframes)
+2. Preserve factual accuracy; never invent numbers, percentages, or timeframes
 3. Highlight technical skills and business value
 4. Use bullet points (start with •)
 5. Keep each point concise (1-2 lines)
@@ -228,4 +235,3 @@ Enhancement Requirements:
 Return ONLY the enhanced summary as a single paragraph. Do not add any explanations, headers, or extra content."""
 
     return prompt
-

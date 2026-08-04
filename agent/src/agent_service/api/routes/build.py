@@ -9,8 +9,8 @@ from typing import Dict, Any, List, Optional
 from dataclasses import asdict
 
 
-from application.use_cases.build_resume import BuildResumeUseCase
-from domain.models import (
+from ...application.use_cases.build_resume import BuildResumeUseCase
+from ...domain.models import (
     Resume, 
     PersonalInfo, 
     Experience, 

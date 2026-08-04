@@ -1,4 +1,4 @@
-from domain.models import Resume
+from ...domain.models import Resume
 from typing import Literal
 from dataclasses import asdict
 

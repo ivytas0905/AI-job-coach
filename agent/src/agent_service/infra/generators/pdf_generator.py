@@ -7,7 +7,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.units import inch
 from io import BytesIO
-from domain.models import Resume
+from ...domain.models import Resume
 from .base import ResumeGenerator
 
 

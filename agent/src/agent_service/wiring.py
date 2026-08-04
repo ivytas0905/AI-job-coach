@@ -1,7 +1,8 @@
 """Dependency Injection Container"""
 from functools import lru_cache
 from .config import get_settings
-from .infra.llm.openai_provider import OpenAIProvider
+from .application.ports.llm import LlmProvider
+from .infra.llm.registry import build_provider
 from .infra.nlp.section_extractor import SectionExtractor
 from .infra.nlp.jd_analyzer import JDAnalyzer
 from .infra.nlp.bullet_optimizer import BulletOptimizer
@@ -16,12 +17,9 @@ settings = get_settings()
 
 # LLM Provider
 @lru_cache()
-def get_llm_provider() -> OpenAIProvider:
-    """Get OpenAI LLM provider instance"""
-    return OpenAIProvider(
-        api_key=settings.openai_api_key,
-        model="gpt-4o-mini"
-    )
+def get_llm_provider() -> LlmProvider:
+    """Build the configured provider only when an LLM capability is requested."""
+    return build_provider(settings)
 
 
 # Section Extractor
@@ -95,15 +93,6 @@ def get_database_manager():
         database_url=settings.database_url,
         echo=settings.database_echo
     )
-
-
-# Enhanced LLM Service
-from .infra.llm.enhanced_llm import EnhancedLLMService
-
-@lru_cache()
-def get_enhanced_llm_service() -> EnhancedLLMService:
-    """Get enhanced LLM service instance"""
-    return EnhancedLLMService(api_key=settings.openai_api_key)
 
 
 # Memory Cache Service
