@@ -10,6 +10,7 @@ from ...api.schemas.job_description import (
 )
 from ...application.use_cases.analyze_jd import AnalyzeJDUseCase
 from ...wiring import get_analyze_jd_use_case
+from ...api.auth import UserContext, get_current_user
 
 router = APIRouter(prefix="/jd", tags=["Job Description"])
 
@@ -20,7 +21,8 @@ from . import tailor
 @router.post("/analyze", response_model=AnalyzeJDResponse)
 async def analyze_job_description(
     request: AnalyzeJDRequest,
-    use_case: AnalyzeJDUseCase = Depends(get_analyze_jd_use_case)
+    use_case: AnalyzeJDUseCase = Depends(get_analyze_jd_use_case),
+    user: UserContext = Depends(get_current_user),
 ):
     """
     Analyze job description and extract structured information
@@ -69,7 +71,7 @@ async def analyze_job_description(
         )
 
         # Store JD for later use in tailoring
-        tailor.store_job_description(jd)
+        tailor.store_job_description(jd, user)
 
         return AnalyzeJDResponse(
             success=True,

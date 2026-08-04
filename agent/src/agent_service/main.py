@@ -2,10 +2,11 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api.routes import build, export, jd, master, optimize, parse, tailor
+from .api.auth import get_current_user
 from .config import get_settings
 from .wiring import get_database_manager, get_memory_cache
 
@@ -40,7 +41,11 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     for router in (build, export, optimize, parse, jd, master, tailor):
-        application.include_router(router.router, prefix="/api/v1")
+        application.include_router(
+            router.router,
+            prefix="/api/v1",
+            dependencies=[Depends(get_current_user)],
+        )
 
     @application.get("/health")
     async def health_check() -> dict[str, str]:

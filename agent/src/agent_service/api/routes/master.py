@@ -1,7 +1,7 @@
 """
 Master Resume API Routes
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict
 from ...api.schemas.master_resume import (
     MasterResumeSchema,
@@ -21,6 +21,7 @@ from ...domain.models import (
     PersonalInfo
 )
 from datetime import datetime
+from ...api.auth import UserContext, get_current_user
 
 router = APIRouter(prefix="/master", tags=["Master Resume"])
 
@@ -29,7 +30,10 @@ master_resumes: Dict[str, MasterResume] = {}
 
 
 @router.post("/resume")
-async def create_master_resume(request: CreateMasterResumeRequest):
+async def create_master_resume(
+    request: CreateMasterResumeRequest,
+    user: UserContext = Depends(get_current_user),
+):
     """
     Create a new master resume
 
@@ -45,7 +49,7 @@ async def create_master_resume(request: CreateMasterResumeRequest):
     try:
         # Convert request to domain model
         master = MasterResume(
-            user_id="user_1",  # TODO: Get from auth
+            user_id=user.subject,
             personal_info=_schema_to_personal_info(request.personal_info),
             experiences=[_schema_to_experience(exp) for exp in request.experiences],
             education=[_schema_to_education(edu) for edu in request.education],
@@ -68,25 +72,28 @@ async def create_master_resume(request: CreateMasterResumeRequest):
 
 
 @router.get("/resume", response_model=MasterResumeSchema)
-async def get_master_resume():
+async def get_master_resume(user: UserContext = Depends(get_current_user)):
     """
     Get the user's master resume
 
     Returns:
         Master resume if exists, 404 otherwise
     """
-    # For MVP, return the first (and only) master resume
-    if not master_resumes:
+    master = next(
+        (resume for resume in master_resumes.values() if resume.user_id == user.subject),
+        None,
+    )
+    if master is None:
         raise HTTPException(status_code=404, detail="No master resume found. Please create one first.")
-
-    master_id = list(master_resumes.keys())[0]
-    master = master_resumes[master_id]
 
     return _master_to_schema(master)
 
 
 @router.put("/resume", response_model=MasterResumeSchema)
-async def update_master_resume(request: CreateMasterResumeRequest):
+async def update_master_resume(
+    request: CreateMasterResumeRequest,
+    user: UserContext = Depends(get_current_user),
+):
     """
     Update master resume
 
@@ -97,11 +104,12 @@ async def update_master_resume(request: CreateMasterResumeRequest):
         Updated master resume
     """
     # Get existing master
-    if not master_resumes:
+    master = next(
+        (resume for resume in master_resumes.values() if resume.user_id == user.subject),
+        None,
+    )
+    if master is None:
         raise HTTPException(status_code=404, detail="No master resume found")
-
-    master_id = list(master_resumes.keys())[0]
-    master = master_resumes[master_id]
 
     # Update fields
     master.personal_info = _schema_to_personal_info(request.personal_info)
