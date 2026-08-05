@@ -34,6 +34,7 @@ def test_fresh_database_upgrades_to_workflow_schema(tmp_path):
         "proposal_decisions",
         "resume_versions",
         "exports",
+        "evidence_vectors",
     } <= tables
 
 

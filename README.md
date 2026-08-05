@@ -416,7 +416,6 @@ AI-job-coach/
 │   └── README.md                 # Frontend documentation
 │
 ├── .github/                      # GitHub configuration
-├── KNOWLEDGE_BASE_IMPLEMENTATION.md
 └── README.md                     # This file
 ```
 

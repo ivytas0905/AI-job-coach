@@ -1,5 +1,5 @@
 """Parse Resume Use Case"""
-from typing import Tuple
+import re
 from ...domain.models import Resume
 from ...infra.parsing.pdf_parser import PDFParser
 from ...infra.parsing.docx_parser import DOCXParser
@@ -48,7 +48,23 @@ class ParseResumeUseCase:
         else:
             raise ValueError(f"Unsupported file format: {file_ext}. Only PDF and DOCX are supported.")
 
+        text = self._normalize_text(text)
+        if not text:
+            raise ValueError("Resume contains no readable text")
+
         # Extract structured data using LLM
         resume = await self.section_extractor.extract_resume_data(text)
 
+        # Keep the normalized source available as evidence for later proposals.
+        resume.raw_text = text
+
         return resume
+
+    @staticmethod
+    def _normalize_text(text: str) -> str:
+        lines = []
+        for line in text.splitlines():
+            normalized = re.sub(r"\s+", " ", line).strip()
+            if normalized:
+                lines.append(normalized)
+        return "\n".join(lines)

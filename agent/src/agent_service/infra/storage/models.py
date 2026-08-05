@@ -47,6 +47,9 @@ class ResumeVersionModel(Base):
     Each version can be customized for different companies or job types.
     """
     __tablename__ = 'resume_versions'
+    __table_args__ = (
+        UniqueConstraint("run_id", "idempotency_key", name="uq_version_run_idempotency"),
+    )
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     user_id = Column(String(255), nullable=True, index=True)
@@ -54,6 +57,7 @@ class ResumeVersionModel(Base):
     master_resume_id = Column(String(36), ForeignKey('master_resumes.id'), nullable=False, index=True)
     parent_version_id = Column(String(36), ForeignKey('resume_versions.id'), nullable=True)
     version_number = Column(Integer, nullable=True)
+    idempotency_key = Column(String(255), nullable=True)
 
     # Version metadata
     version_name = Column(String(255), nullable=False, comment="e.g., 'Google MLE v1', 'Generic SWE v2'")
@@ -230,6 +234,18 @@ class AgentMessageModel(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
+class AgentEventModel(Base):
+    __tablename__ = "agent_events"
+    __table_args__ = (UniqueConstraint("run_id", "sequence", name="uq_event_run_sequence"),)
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    run_id = Column(String(36), ForeignKey("tailoring_runs.id"), nullable=False, index=True)
+    user_id = Column(String(255), nullable=False, index=True)
+    sequence = Column(Integer, nullable=False)
+    event_type = Column(String(50), nullable=False)
+    payload = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 class ProposalModel(Base):
     __tablename__ = "proposals"
 
@@ -242,6 +258,7 @@ class ProposalModel(Base):
     suggested_text = Column(Text, nullable=False)
     rationale = Column(Text, nullable=False)
     source_evidence = Column(JSON, nullable=False)
+    evidence_request = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
@@ -261,11 +278,13 @@ class ProposalDecisionModel(Base):
     proposal_revision = Column(Integer, nullable=False)
     decision = Column(String(20), nullable=False)
     idempotency_key = Column(String(255), nullable=False)
+    version_id = Column(String(36), ForeignKey("resume_versions.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class ExportModel(Base):
     __tablename__ = "exports"
+    __table_args__ = (UniqueConstraint("run_id", "idempotency_key", name="uq_export_run_idempotency"),)
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     run_id = Column(String(36), ForeignKey("tailoring_runs.id"), nullable=False, index=True)
@@ -274,4 +293,5 @@ class ExportModel(Base):
     storage_key = Column(Text, nullable=False, unique=True)
     content_type = Column(String(255), nullable=False)
     size_bytes = Column(Integer, nullable=False)
+    idempotency_key = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

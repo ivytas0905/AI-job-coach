@@ -8,7 +8,7 @@ from typing import Optional, List
 from ...application.ports.llm import LlmMessage, LlmProvider
 from ...wiring import get_llm_provider
 
-router = APIRouter(prefix = "/api/resume",tags = ["optimize"])
+router = APIRouter(prefix="/resume", tags=["optimize"])
 
 # ============= Request/Response Schema =============
 class EnhanceRequest(BaseModel):

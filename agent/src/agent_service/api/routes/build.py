@@ -19,7 +19,7 @@ from ...domain.models import (
     ExperienceType, 
     ResumeSource
 )
-router = APIRouter(prefix="/api/resume/build", tags=["build"])
+router = APIRouter(prefix="/resume/build", tags=["build"])
 
 
 # ============= Request Models =============

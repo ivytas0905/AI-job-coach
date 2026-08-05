@@ -35,9 +35,7 @@ class ChatTransport:
     ) -> LlmResult:
         payload: dict[str, Any] = {
             "model": self.model,
-            "messages": [
-                {"role": item.role, "content": item.content} for item in messages
-            ],
+            "messages": [self._message_payload(item) for item in messages],
             "temperature": temperature,
         }
         if tools:
@@ -62,6 +60,7 @@ class ChatTransport:
             raise ProviderError(
                 category, f"LLM provider returned HTTP {status}"
             ) from exc
+
         except httpx.HTTPError as exc:
             raise ProviderError("network", "LLM provider request failed") from exc
 
@@ -97,6 +96,19 @@ class ChatTransport:
             raise ProviderError(
                 "invalid_response", "LLM provider returned an invalid response"
             ) from exc
+
+    @staticmethod
+    def _message_payload(message: LlmMessage) -> dict[str, Any]:
+        payload: dict[str, Any] = {"role": message.role, "content": message.content}
+        if message.tool_requests:
+            payload["tool_calls"] = [
+                {"id": request.id, "type": "function", "function": {
+                    "name": request.name, "arguments": json.dumps(request.arguments)
+                }} for request in message.tool_requests
+            ]
+        if message.tool_call_id is not None:
+            payload["tool_call_id"] = message.tool_call_id
+        return payload
 
     async def close(self) -> None:
         await self._client.aclose()

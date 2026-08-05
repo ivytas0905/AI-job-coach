@@ -6,6 +6,7 @@ from . import (
     jd,
     master,
     tailor,
+    agent,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "jd",
     "master",
     "tailor",
+    "agent",
 ]
