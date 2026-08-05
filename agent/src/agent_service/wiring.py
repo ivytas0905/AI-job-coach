@@ -2,12 +2,16 @@
 from functools import lru_cache
 from .config import get_settings
 from .application.ports.llm import LlmProvider
+from .application.ports.object_storage import ObjectStorage
+from .application.services.export_storage import ExportStorageService
 from .infra.llm.registry import build_provider
 from .infra.nlp.section_extractor import SectionExtractor
 from .infra.nlp.jd_analyzer import JDAnalyzer
 from .infra.nlp.bullet_optimizer import BulletOptimizer
 from .infra.matching.content_selector import ContentSelector
 from .infra.storage.files import FileStorage
+from .infra.storage.object_store import LocalObjectStorage, S3ObjectStorage
+from .infra.storage.workflow_repository import WorkflowRepository
 from .application.use_cases.parse_resume import ParseResumeUseCase
 from .application.use_cases.analyze_jd import AnalyzeJDUseCase
 from .application.use_cases.tailor_resume import TailorResumeUseCase
@@ -60,6 +64,36 @@ def get_file_storage() -> FileStorage:
     return FileStorage(upload_dir="uploads")
 
 
+@lru_cache()
+def get_object_storage() -> ObjectStorage:
+    """Build the configured durable object storage adapter."""
+    if settings.object_storage_backend == "local":
+        return LocalObjectStorage(
+            settings.object_storage_root,
+            max_size_bytes=settings.max_file_size,
+        )
+    if settings.object_storage_backend == "s3":
+        if not settings.object_storage_bucket:
+            raise RuntimeError("RESUME_OBJECT_STORAGE_BUCKET is required for S3 storage")
+        import boto3
+
+        client = boto3.client(
+            "s3",
+            endpoint_url=settings.object_storage_endpoint_url,
+            region_name=settings.object_storage_region,
+            aws_access_key_id=settings.object_storage_access_key_id,
+            aws_secret_access_key=settings.object_storage_secret_access_key,
+        )
+        return S3ObjectStorage(
+            client,
+            settings.object_storage_bucket,
+            max_size_bytes=settings.max_file_size,
+        )
+    raise RuntimeError(
+        f"Unknown object storage backend: {settings.object_storage_backend}"
+    )
+
+
 # Use Cases
 def get_parse_resume_use_case() -> ParseResumeUseCase:
     """Get parse resume use case instance"""
@@ -93,6 +127,16 @@ def get_database_manager():
         database_url=settings.database_url,
         echo=settings.database_echo
     )
+
+
+@lru_cache()
+def get_workflow_repository() -> WorkflowRepository:
+    return WorkflowRepository(get_database_manager().async_session_factory)
+
+
+@lru_cache()
+def get_export_storage_service() -> ExportStorageService:
+    return ExportStorageService(get_object_storage(), get_workflow_repository())
 
 
 # Memory Cache Service

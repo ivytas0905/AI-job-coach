@@ -28,6 +28,15 @@ class Settings(BaseSettings):
     upload_dir: str = "uploads"
     database_url: str = "sqlite+aiosqlite:///./ai_job_coach.db"
     database_echo: bool = False
+    database_auto_create: bool = False
+
+    object_storage_backend: str = "local"
+    object_storage_root: str = "object-storage"
+    object_storage_bucket: str | None = None
+    object_storage_endpoint_url: str | None = None
+    object_storage_region: str | None = None
+    object_storage_access_key_id: str | None = None
+    object_storage_secret_access_key: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",
