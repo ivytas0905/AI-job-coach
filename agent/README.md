@@ -4,7 +4,7 @@
 
 ## Overview
 
-The backend service is built with **FastAPI** following **Clean Architecture** principles. It provides intelligent resume parsing, optimization, and generation capabilities powered by Large Language Models with automatic failover support.
+The backend service is built with **FastAPI** following **Clean Architecture** principles. It provides intelligent resume parsing, optimization, and generation through a provider-neutral LLM capability supporting DeepSeek, OpenAI, and Together AI.
 
 ## Architecture
 
@@ -59,11 +59,11 @@ The backend service is built with **FastAPI** following **Clean Architecture** p
 - **Verb Diversification**: Use 150+ categorized action verbs
 - **Anti-Hallucination**: Prevent AI from fabricating information
 
-### 4. LLM Failover System
-- **Primary Provider**: OpenAI (GPT-4o-mini)
-- **Fallback Provider**: Together AI (Mixtral-8x7B)
-- **Automatic Switching**: Seamless failover on errors
-- **Retry Logic**: Configurable attempts and delays
+### 4. Provider-neutral LLM capability
+- **Configured Provider**: DeepSeek, OpenAI, or Together AI
+- **Normalized Contract**: Text, tool calls, usage, finish reasons, and errors
+- **Conversation Pinning**: Persisted provider/model values survive default changes
+- **No Automatic Fallback**: Provider changes are explicit and never happen mid-conversation
 
 ### 5. Knowledge Base
 - **STAR Framework Guidelines**: Best practices for achievement descriptions
@@ -106,20 +106,16 @@ vim .env
 Create a `.env` file with the following variables:
 
 ```bash
-# LLM Configuration
-LLM_PROVIDER=openai
-OPENAI_API_KEY=your-openai-api-key
-OPENAI_MODEL=gpt-4o-mini
-
-# Together AI (Fallback)
-TOGETHER_API_KEY=your-together-api-key
-TOGETHER_MODEL=mistralai/Mixtral-8x7B-Instruct-v0.1
-
-# Fallback Settings
-ENABLE_FALLBACK=true
-FALLBACK_PROVIDER=together
-MAX_RETRIES=2
-RETRY_DELAY=1
+# LLM Configuration (all settings use the RESUME_ prefix)
+RESUME_LLM_PROVIDER=deepseek
+RESUME_LLM_MODEL=deepseek-chat
+RESUME_DEEPSEEK_API_KEY=your-deepseek-api-key
+RESUME_DEEPSEEK_BASE_URL=https://api.deepseek.com
+RESUME_OPENAI_API_KEY=your-openai-api-key
+RESUME_OPENAI_BASE_URL=https://api.openai.com/v1
+RESUME_TOGETHER_API_KEY=your-together-api-key
+RESUME_TOGETHER_BASE_URL=https://api.together.xyz/v1
+RESUME_LLM_TIMEOUT_SECONDS=30
 
 # Application
 ENVIRONMENT=development
@@ -317,10 +313,9 @@ agent/
 │       │
 │       ├── infra/                  # Infrastructure Layer
 │       │   ├── llm/                # LLM Integration
-│       │   │   ├── llm_manager.py  # Failover management
-│       │   │   ├── openai_provider.py
-│       │   │   ├── together_provider.py
-│       │   │   └── enhanced_llm.py
+│       │   │   ├── chat_transport.py
+│       │   │   ├── providers.py
+│       │   │   └── registry.py
 │       │   │
 │       │   ├── nlp/                # NLP Processing
 │       │   │   ├── section_extractor.py
@@ -372,27 +367,17 @@ agent/
 
 ## Infrastructure Modules
 
-### LLM Manager
+### LLM Provider
 
-**Location**: `infra/llm/llm_manager.py`
+**Locations**: `application/ports/llm.py`, `infra/llm/chat_transport.py`, and `infra/llm/providers.py`
 
-Manages LLM provider failover:
+Build the deployment default provider lazily:
 
 ```python
-from agent_service.infra.llm import LLMManager
+from agent_service.infra.llm.registry import build_provider
+from agent_service.config import Settings
 
-# Initialize
-llm_manager = LLMManager()
-
-# Generate text (automatic failover)
-response = await llm_manager.generate_text(
-    prompt="Optimize this bullet point",
-    system_prompt="You are a resume expert",
-    temperature=0.7
-)
-
-# Current provider
-print(llm_manager.get_current_provider())  # "openai" or "together"
+provider = build_provider(Settings())
 ```
 
 ### Knowledge Base
@@ -462,10 +447,11 @@ pytest tests/integration/
 pytest --cov=agent_service
 ```
 
-### Test LLM Failover
+### Credentialed DeepSeek Smoke
 
 ```bash
-python test_fallback.py
+# Explicitly opt in after setting RESUME_DEEPSEEK_API_KEY.
+python scripts/smoke_deepseek.py
 ```
 
 ## Development

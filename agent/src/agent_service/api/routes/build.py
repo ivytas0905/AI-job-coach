@@ -19,9 +19,6 @@ from ...domain.models import (
     ExperienceType, 
     ResumeSource
 )
-# Import your LLM service, retriever, template engine later
-# from infra.llm.openai_provider import OpenAIProvider
-
 router = APIRouter(prefix="/api/resume/build", tags=["build"])
 
 

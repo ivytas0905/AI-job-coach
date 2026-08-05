@@ -1,7 +1,25 @@
 """Provider-neutral LLM contracts used by the application layer."""
 
 from dataclasses import dataclass, field
-from typing import Any, Protocol, Sequence
+from typing import Any, Literal, Protocol, Sequence
+
+
+ProviderErrorCategory = Literal[
+    "authentication",
+    "rate_limit",
+    "server",
+    "timeout",
+    "network",
+    "invalid_response",
+]
+
+
+class ProviderError(RuntimeError):
+    """Provider-neutral failure safe to handle outside transport adapters."""
+
+    def __init__(self, category: ProviderErrorCategory, message: str):
+        super().__init__(message)
+        self.category = category
 
 
 @dataclass(frozen=True)
@@ -23,6 +41,13 @@ class LlmResult:
     finish_reason: str
     tool_requests: tuple[ToolRequest, ...] = ()
     usage: dict[str, int] = field(default_factory=dict)
+
+
+def require_text(result: LlmResult) -> str:
+    """Return text for text-only capabilities or reject a tool-only response."""
+    if result.text is None:
+        raise ProviderError("invalid_response", "LLM provider returned no text")
+    return result.text
 
 
 class LlmProvider(Protocol):

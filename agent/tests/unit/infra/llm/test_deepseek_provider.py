@@ -1,12 +1,11 @@
-import asyncio
 import httpx
 import pytest
 
-from agent_service.application.ports.llm import LlmMessage
-from agent_service.infra.llm.deepseek_provider import DeepSeekProvider, ProviderError
+from agent_service.application.ports.llm import LlmMessage, ProviderError
+from agent_service.infra.llm.providers import DeepSeekProvider
 
 
-def test_normalizes_text_tools_and_usage():
+async def test_normalizes_text_tools_and_usage():
     async def handler(request: httpx.Request) -> httpx.Response:
         assert request.headers["authorization"] == "Bearer secret"
         return httpx.Response(200, json={
@@ -24,12 +23,10 @@ def test_normalizes_text_tools_and_usage():
         })
 
     provider = DeepSeekProvider("secret", "deepseek-chat", "https://example.test", transport=httpx.MockTransport(handler))
-    async def exercise():
+    try:
         result = await provider.complete([LlmMessage("user", "analyze")])
+    finally:
         await provider.close()
-        return result
-
-    result = asyncio.run(exercise())
 
     assert result.finish_reason == "tool_calls"
     assert result.tool_requests[0].name == "analyze_jd"
@@ -37,7 +34,7 @@ def test_normalizes_text_tools_and_usage():
     assert result.usage["total_tokens"] == 5
 
 
-def test_rejects_malformed_tool_arguments():
+async def test_rejects_malformed_tool_arguments():
     async def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={
             "choices": [{"finish_reason": "tool_calls", "message": {
@@ -46,12 +43,78 @@ def test_rejects_malformed_tool_arguments():
         })
 
     provider = DeepSeekProvider("secret", "deepseek-chat", "https://example.test", transport=httpx.MockTransport(handler))
-    async def exercise():
+    with pytest.raises(ProviderError, match="invalid response") as error:
         try:
-            return await provider.complete([LlmMessage("user", "go")])
+            await provider.complete([LlmMessage("user", "go")])
         finally:
             await provider.close()
-
-    with pytest.raises(ProviderError, match="malformed") as error:
-        asyncio.run(exercise())
     assert error.value.category == "invalid_response"
+
+
+@pytest.mark.parametrize(
+    ("status", "category"),
+    [(401, "authentication"), (403, "authentication"), (429, "rate_limit"), (500, "server")],
+)
+async def test_normalizes_http_errors(status, category):
+    async def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(status, json={"error": "provider detail must stay private"})
+
+    provider = DeepSeekProvider(
+        "secret",
+        "deepseek-chat",
+        "https://example.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ProviderError) as error:
+        try:
+            await provider.complete([LlmMessage("user", "go")])
+        finally:
+            await provider.close()
+    assert error.value.category == category
+    assert "provider detail" not in str(error.value)
+
+
+async def test_normalizes_malformed_response():
+    async def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"choices": []})
+
+    provider = DeepSeekProvider(
+        "secret",
+        "deepseek-chat",
+        "https://example.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ProviderError) as error:
+        try:
+            await provider.complete([LlmMessage("user", "go")])
+        finally:
+            await provider.close()
+    assert error.value.category == "invalid_response"
+
+
+@pytest.mark.parametrize(
+    ("exception_factory", "category"),
+    [
+        (lambda request: httpx.ReadTimeout("slow", request=request), "timeout"),
+        (lambda request: httpx.ConnectError("offline", request=request), "network"),
+    ],
+)
+async def test_normalizes_transport_errors(exception_factory, category):
+    async def handler(request: httpx.Request) -> httpx.Response:
+        raise exception_factory(request)
+
+    provider = DeepSeekProvider(
+        "secret",
+        "deepseek-chat",
+        "https://example.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ProviderError) as error:
+        try:
+            await provider.complete([LlmMessage("user", "go")])
+        finally:
+            await provider.close()
+    assert error.value.category == category

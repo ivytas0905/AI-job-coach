@@ -377,8 +377,8 @@ AI-job-coach/
 │   │       ├── infra/             # Infrastructure Layer
 │   │       │   ├── llm/           # LLM Integration
 │   │       │   │   ├── llm_manager.py     # Failover management
-│   │       │   │   ├── openai_provider.py
-│   │       │   │   └── together_provider.py
+│   │       │   │   ├── chat_transport.py
+│   │       │   │   └── providers.py
 │   │       │   ├── nlp/           # NLP Processing
 │   │       │   ├── storage/       # Data persistence
 │   │       │   ├── cache/         # Cache service

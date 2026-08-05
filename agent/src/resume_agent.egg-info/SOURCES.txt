@@ -6,6 +6,7 @@ src/agent_service/config.py
 src/agent_service/main.py
 src/agent_service/wiring.py
 src/agent_service/api/__init__.py
+src/agent_service/api/auth.py
 src/agent_service/api/routes/__init__.py
 src/agent_service/api/routes/build.py
 src/agent_service/api/routes/chat_assistant.py
@@ -30,7 +31,11 @@ src/agent_service/api/schemas/resume.py
 src/agent_service/api/schemas/tailored_resume.py
 src/agent_service/application/__init__.py
 src/agent_service/application/ports/__init__.py
+src/agent_service/application/ports/identity.py
 src/agent_service/application/ports/llm.py
+src/agent_service/application/ports/object_storage.py
+src/agent_service/application/services/__init__.py
+src/agent_service/application/services/export_storage.py
 src/agent_service/application/use_cases/analyze_jd.py
 src/agent_service/application/use_cases/build_resume.py
 src/agent_service/application/use_cases/chat_assistant.py
@@ -78,8 +83,10 @@ src/agent_service/infra/scoring/jd_matching.py
 src/agent_service/infra/storage/database.py
 src/agent_service/infra/storage/files.py
 src/agent_service/infra/storage/models.py
+src/agent_service/infra/storage/object_store.py
 src/agent_service/infra/storage/repo.py
 src/agent_service/infra/storage/vector_db.py
+src/agent_service/infra/storage/workflow_repository.py
 src/agent_service/infra/vector/__init__.py
 src/agent_service/infra/vector/simple_vector_store.py
 src/agent_service/tests/__init__.py
