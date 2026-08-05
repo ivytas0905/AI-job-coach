@@ -1,6 +1,7 @@
 """Application settings."""
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -33,6 +34,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./ai_job_coach.db"
     database_echo: bool = False
     database_auto_create: bool = False
+    vector_backend: Literal["local", "postgres"] = "local"
 
     object_storage_backend: str = "local"
     object_storage_root: str = "object-storage"

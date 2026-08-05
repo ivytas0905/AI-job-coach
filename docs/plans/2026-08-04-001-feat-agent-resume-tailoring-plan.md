@@ -196,6 +196,7 @@ flowchart TB
 - KTD9. **Use storage ports with durable production and local development adapters.** Production uses an S3-compatible object store; local development uses the filesystem behind the same ownership-aware contract. Governs R8, R9.
 - KTD10. **Stream progress, persist authoritative state.** The API may stream assistant text and progress events, but clients recover from the persisted run snapshot rather than treating the stream as the source of truth. Governs R4, R8, R9.
 - KTD11. **Replace legacy resume navigation only after parity gates pass.** The new workspace becomes primary after upload, analysis, approval, version, and export checks succeed; the independent LeetCode API remains covered by regression tests. Governs R1, R9, R12.
+- KTD12. **Expose one run-scoped browser contract under `/api/v1/agent`.** The new frontend uses authenticated run commands, snapshots, histories, exports, and a resumable SSE event feed. The SSE client uses authenticated fetch streaming rather than putting a Clerk token in the URL or relying on native `EventSource`, which cannot attach the required bearer header. The frontend does not call the internal tool registry or legacy capability routes directly. Governs R1-R9, R13.
 
 ### High-Level Technical Design
 
@@ -342,6 +343,8 @@ Existing capabilities may remain in their current modules when characterization 
 | Disconnects | Duplicate work | Persist transitions and reload snapshots before retrying. |
 | SQLite concurrency gap | Production races | Run migration and approval concurrency tests on PostgreSQL. |
 | Resume migration breaks LeetCode | Adjacent regression | Preserve its proxy and add API/browser regression tests. |
+| Resume/JD content leaks through logs or streams | User PII exposure | Log resource IDs and error categories instead of source text; owner-scope snapshots, events, exports, and downloads. |
+| Malicious or oversized uploads | Resource exhaustion or parser abuse | Enforce byte limits and detected-type checks before parsing; reject empty or unsupported documents with stable client errors. |
 
 ### Sources and Research
 
@@ -350,6 +353,72 @@ Existing capabilities may remain in their current modules when characterization 
 - `agent/src/agent_service/domain/ports.py` and `infra/llm/llm_manager.py` show the incomplete, provider-coupled baseline.
 - Resume/JD routes use process memory; `apps/web-legacy/src/app/dashboard/resume/**` uses `sessionStorage`.
 - `apps/web-legacy/src/app/api/leetcode/route.ts` is the independent LeetCode regression surface.
+
+### Current Interface Inventory
+
+The current FastAPI composition root applies Clerk bearer authentication to every registered resume route. The route modules then expose the following HTTP surface.
+
+| Current endpoint | Current behavior | Persistence and ownership | Decision for the agent workspace |
+|---|---|---|---|
+| `GET /health` | Public process health | None | Keep for operational health only. |
+| `POST /api/v1/parse/resume` | Parses an uploaded PDF, DOCX, or nominal DOC | No durable source record | Reuse the parser behind the orchestrator; replace this browser contract with run-scoped source upload. |
+| `POST /api/v1/master/resume` | Creates a master resume | Process memory; subject tagged | Replace with repository-backed run source commands. |
+| `GET /api/v1/master/resume` | Returns one master resume | Process memory; subject filtered | Do not use as the workspace snapshot. Keep only if a separate master-resume editor remains necessary. |
+| `PUT /api/v1/master/resume` | Replaces one master resume | Process memory; subject filtered | Do not let the workspace bypass proposal approval through this route. |
+| `POST /api/v1/jd/analyze` | Analyzes and stores one JD | Process memory; subject tagged | Reuse analysis behind the orchestrator; expose its result in the run snapshot. |
+| `POST /api/v1/tailor/resume` | Produces a tailored-resume record from master/JD IDs | Process memory; subject checked | Supersede with proposal generation. It lacks the persisted approval boundary. |
+| `GET /api/v1/tailor/resume/{tailored_id}` | Reads one generated tailored record | Process memory; subject checked | Supersede with run snapshot, proposal history, and version queries. |
+| `POST /api/v1/api/resume/enhance` | Rewrites one description | No persistence or approval | Retire from the new workspace; the typed proposal tool owns this behavior. |
+| `POST /api/v1/api/resume/enhance-summary` | Rewrites one summary | No persistence or approval | Retire from the new workspace for the same reason. |
+| `POST /api/v1/api/resume/build/` | Builds a preview-shaped resume | No persistence; incomplete dependency wiring | Do not reuse as an agent API. |
+| `POST /api/v1/api/resume/build/validate` | Validates legacy form input | No persistence | Replace with typed command validation at the agent boundary. |
+| `POST /api/v1/api/resume/build/preview` | Returns inline HTML | No persistence | Replace with a frontend-rendered preview from an authoritative version snapshot. |
+| `POST /api/v1/api/resume/generate` | Returns PDF or DOCX bytes from request content | No durable export metadata | Reuse generators behind `export_approved_resume`; expose version-scoped export creation and download. |
+
+The doubled `/api/v1/api/...` paths come from route-local `/api` prefixes combined with the composition-root `/api/v1` prefix. They are legacy contracts, not the naming pattern for new routes.
+
+Several current routes also project stale schema fields such as `PersonalInfo.name` and `Education.description`, while the active domain models use `PersonalInfo.fullname` and no education description field. U7 must not present these routes as supported workspace dependencies until their contract tests pass or they are retired.
+
+### Internal Capabilities Without Browser Interfaces
+
+| Existing internal capability | Current owner | What already exists | Missing public boundary |
+|---|---|---|---|
+| Owner-scoped run persistence | `agent/src/agent_service/infra/storage/workflow_repository.py` | Create/load runs; append messages; create proposals; record decisions; create/restore versions; create exports | No route or response schema exposes any operation. |
+| Durable export storage | `agent/src/agent_service/application/services/export_storage.py` | Stores bytes through the object-storage port and records metadata | No create-export or authenticated download endpoint. |
+| Typed resume tools | `agent/src/agent_service/tool_registry.py`, `agent/src/agent_service/tools/resume_tools.py` | Parse, analyze JD, propose tailoring, and export approved content with effects and state gates | Internal Python registry only; browsers must invoke it through the orchestrator. |
+| Provider registry and pinned identity | `agent/src/agent_service/infra/llm/registry.py`, workflow records | Configurable provider lookup and persisted run provider/model fields | No run creation command binds deployment defaults to a new run. |
+| Approval persistence | `WorkflowRepository.decide_proposal` | Revision check, decision record, and idempotency uniqueness | Acceptance does not atomically materialize a version; no HTTP conflict contract exists. |
+| Run recovery snapshot | `WorkflowRepository.load_run` | Messages, proposals, decisions, versions, and exports | No stable DTO, list-runs query, event cursor, or reconnect endpoint. |
+
+### New Workspace Page-to-API Mapping
+
+The first frontend release uses one route family: `/dashboard/resume/agent` for starting or resuming work and `/dashboard/resume/agent/[runId]` for the workspace. The workspace may use panels and dialogs, but it does not reintroduce upload, JD, optimize, chat, and export as separate navigation steps.
+
+| Workspace region or user action | Required browser contract | Current status | Backend work owner |
+|---|---|---|---|
+| Run list and new-run entry | `GET /api/v1/agent/runs`; `POST /api/v1/agent/runs` | Missing | U7 over U6 run creation/query services |
+| Resume source panel | `POST /api/v1/agent/runs/{run_id}/resume` multipart upload; snapshot projection of parsed master resume | Missing; parser and storage exist internally | U6 command plus U7 route/schema |
+| JD input and analysis panel | `POST /api/v1/agent/runs/{run_id}/job-description`; snapshot projection of analysis | Missing; analyzer exists internally | U6 command plus U7 route/schema |
+| Conversation timeline and command composer | `POST /api/v1/agent/runs/{run_id}/messages`; `GET /api/v1/agent/runs/{run_id}` | Missing; message persistence exists | U6 orchestrator plus U7 command/query routes |
+| Progress and reconnect indicator | `GET /api/v1/agent/runs/{run_id}/events?after={sequence}` using SSE | Missing entirely | U6 durable event semantics plus U7 stream |
+| Evidence-backed proposal cards | Snapshot `proposals[]` with revision, affected content, replacement, JD rationale, source evidence, evidence request, and status | Partial internal models; no DTO and `evidence_request` is not persisted | U4/U6 persistence adjustment plus U7 schema |
+| Accept, reject, or request revision | `POST /api/v1/agent/runs/{run_id}/proposals/{proposal_id}/decisions` with decision, expected revision, and idempotency key | Repository method exists; atomic accepted-version creation is missing | U6 transaction plus U7 command route |
+| Version history and restore | Snapshot `versions[]`; `POST /api/v1/agent/runs/{run_id}/versions/{version_id}/restore` with idempotency key | Repository create/restore exists; no API | U6 service plus U7 routes |
+| Final resume preview | `GET /api/v1/agent/runs/{run_id}/versions/{version_id}`; snapshot identifies `current_version_id` | Missing DTO/query | U7 query route; U8 renders content locally |
+| PDF/DOCX export and download | `POST /api/v1/agent/runs/{run_id}/versions/{version_id}/exports`; `GET /api/v1/agent/runs/{run_id}/exports/{export_id}/download` | Generator, storage service, and metadata exist internally | U6 export command plus U7 create/download routes |
+| Authentication expiry and recovery | All calls attach Clerk bearer tokens; `401` prompts sign-in without discarding persisted run state | Backend auth exists; old frontend attaches no token | U7 error contract plus U8 authenticated API client |
+
+Every command returns the authoritative run revision and either the updated snapshot or a resource identifier that the client immediately resolves to a snapshot. Conflicts use `409` for stale revisions or reused idempotency keys with different payloads. Foreign and absent owned resources use the same `404` response so ownership is not disclosed.
+
+Run creation and list queries return newest-first results with bounded cursor pagination. Resume upload validates extension, detected document type, non-empty extracted content, and configured byte limits before parsing or persistence. Source submission persists the owned master-resume or JD record and attaches it to the run in one service boundary so a failed command cannot leave a run pointing at partial input.
+
+### Frontend Replacement Boundary
+
+The current files under `apps/web-legacy/src/app/dashboard/resume/` are reference material only. They implement a browser-memory sequence, hard-code the backend origin, omit Clerk bearer tokens, link to missing pages, and import a missing `@/lib/api-client`. U8 replaces their state and network layer instead of adapting those assumptions.
+
+Reusable frontend foundations are limited to the Next.js App Router, Clerk integration in `layout.tsx` and `middleware.ts`, global styling, dashboard navigation, and the independent LeetCode route. The new API client reads the backend origin from environment configuration, obtains a Clerk token per request, normalizes API errors, and treats the persisted snapshot as the only workflow authority.
+
+On wide screens, the conversation and current action occupy the primary column while sources, proposal context, and version/export controls occupy a secondary inspector. On narrow screens, the inspector becomes one accessible tabbed or drawer surface and the current required action remains ahead of history. Each region defines loading, empty, partial-analysis, recoverable error, stale-conflict, reconnecting, and completed states. The UI announces asynchronous state changes, preserves keyboard focus after proposal decisions, and never relies on color alone for status.
 
 ---
 
@@ -393,23 +462,23 @@ Existing capabilities may remain in their current modules when characterization 
 ### U6. Build the persisted agent workflow
 
 **Goal / trace:** Bounded orchestration, legal transitions, atomic approval and recovery (R3-R9, R11; AE1-AE5). **Dependencies:** U2-U5.  
-**Files:** Create orchestrator, state machine, tailoring-session service, unit tests and PostgreSQL approval/resume integration tests; modify wiring.  
-**Approach:** Implement KTD2, KTD5, KTD6 and KTD8; bound turns/tools, persist before durable events, and combine proposal revisions with transactional idempotency.  
-**Scenarios / verification:** Inputs gate analysis; proposals create no version; rejection records only a decision; approval creates exactly one version under retries/concurrency; stale approvals fail; provider/tool failures recover; restarts and second devices resume; provider pinning holds.
+**Files:** Create `agent/src/agent_service/agent/orchestrator.py`, `agent/src/agent_service/agent/state_machine.py`, run command/query services, durable event records, `agent/tests/unit/agent/`, and PostgreSQL approval/resume integration tests; modify workflow models, repository, migrations, and wiring.
+**Approach:** Implement KTD2, KTD5, KTD6 and KTD8. Bind configured provider/model defaults at run creation, derive allowed tools from the persisted state, bound turns and tool calls, persist ordered events before publishing them, and make an accepted proposal decision plus its resume version one idempotent transaction. Add the evidence-request and event-sequence fields needed by the browser snapshot and reconnect contract.
+**Scenarios / verification:** Inputs gate analysis; proposals create no version; rejection and revision requests record only decisions; acceptance creates exactly one version under retries and PostgreSQL concurrency; stale revisions return a typed conflict; reused idempotency keys replay the original result; provider/tool failures recover from the last safe state; restarts and second devices load an equivalent snapshot; event sequences stay ordered; provider pinning holds.
 
 ### U7. Expose authenticated agent APIs and streams
 
 **Goal / trace:** Stable commands, queries, exports and reconnectable progress (R1, R4-R9, R13; AE1, AE2, AE4, AE6). **Dependencies:** U3, U6.  
-**Files:** Create `api/routes/agent.py`, `api/schemas/agent.py`, API/stream/idempotency integration tests; modify route exports, app and wiring.  
-**Approach:** Implement KTD10; commands mutate, queries return snapshots/history, streams resume from persisted event positions.  
-**Scenarios / verification:** Authenticated full API journey; approval requires revision/idempotency; replay returns the original result; reconnect does not rerun tools; public errors hide internals; every lookup denies foreign users; OpenAPI and ASGI tests pass.
+**Files:** Create `agent/src/agent_service/api/routes/agent.py`, `agent/src/agent_service/api/schemas/agent.py`, `agent/tests/contract/api/test_agent_openapi.py`, and agent API/stream/idempotency integration tests; modify route exports, `agent/src/agent_service/main.py`, and wiring.
+**Approach:** Implement KTD10 and KTD12. Expose the run, source, message, proposal-decision, version-restore, export, download, and SSE contracts in the page-to-API mapping. Keep internal tool names and provider payloads private. Commands mutate through U6 services; queries return owner-scoped snapshots; SSE resumes after a persisted sequence and sends only hints that cause snapshot reconciliation. Define stable `400`, `401`, `404`, `409`, `422`, and `5xx` response semantics in OpenAPI.
+**Scenarios / verification:** Create and cursor-page authenticated runs; complete the resume-to-export API journey; reject empty, oversized, extension-mismatched, and unsupported resume files plus invalid JD text before persistence; require revision and idempotency on decisions/restores/exports; replay returns the original result; stale commands return `409`; authenticated fetch reconnect after an event cursor neither leaks tokens nor loses persisted events nor reruns tools; download metadata and bytes match; logs and public errors exclude resume/JD content and internals; every lookup denies foreign users; route paths contain no doubled `/api`; OpenAPI and ASGI tests pass.
 
 ### U8. Replace resume pages with one workspace
 
 **Goal / trace:** Authenticated conversation plus structured artifacts (R1, R5-R9, R13; AE1-AE4, AE6). **Dependencies:** U7.  
-**Files:** Create the resume-agent page, components, API client, types, unit and Playwright tests; modify resume entry/navigation and middleware.  
-**Approach:** Show sources, progress, diffs, accept/reject/revise, history, restore and export. Attach Clerk tokens; server snapshots remain authoritative.  
-**Scenarios / verification:** Signed-out redirect; signed-in resume-to-export; explicit approval; rejection changes no version; reload/second browser restores; history restore is non-destructive; reconnect avoids duplicates; expired auth preserves persisted work; export metadata is correct.
+**Files:** Create `apps/web-legacy/src/app/dashboard/resume/agent/page.tsx`, `apps/web-legacy/src/app/dashboard/resume/agent/[runId]/page.tsx`, `apps/web-legacy/src/components/resume-agent/`, `apps/web-legacy/src/lib/api/agent-client.ts`, `apps/web-legacy/src/types/agent.ts`, frontend unit-test configuration/tests, and `apps/web-legacy/tests/e2e/resume-agent.spec.ts`; modify resume entry/navigation, middleware, environment documentation, and package scripts.
+**Approach:** Build one responsive workspace with a run selector, conversation timeline/composer, source/JD panel, progress/reconnect state, proposal diff cards with evidence, version history, resume preview, and export actions. Attach Clerk tokens through one API client, read the backend origin from configuration, reconcile all optimistic feedback against server snapshots, and never store authoritative workflow content in `sessionStorage`. Use semantic status/error components for keyboard and screen-reader access.
+**Scenarios / verification:** Signed-out users redirect; signed-in users create or resume a run; PDF/DOCX upload and JD submission advance the visible stage; proposal evidence and missing-fact requests render; accept/reject/revise actions are explicit and double-submit safe; rejection creates no version; stale conflicts reload the snapshot; refresh and a second browser restore the same run; SSE reconnect avoids duplicate messages/actions; expired auth returns to sign-in while persisted work remains; history restore is non-destructive; PDF/DOCX downloads use server filenames/content types; narrow and wide layouts keep all primary actions reachable; keyboard-only proposal review works.
 
 ### U9. Retire legacy resume flow and protect adjacent surfaces
 

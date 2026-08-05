@@ -19,17 +19,22 @@ class ExportStorageService:
         key: str,
         content: bytes,
         content_type: str,
+        idempotency_key: str | None = None,
     ):
         stored = await self.storage.put(owner, key, content, content_type)
         try:
-            return await self.repository.create_export(
+            record = await self.repository.create_export(
                 owner=owner,
                 run_id=run_id,
                 version_id=version_id,
                 storage_key=stored.key,
                 content_type=stored.content_type,
                 size_bytes=stored.size_bytes,
+                idempotency_key=idempotency_key,
             )
+            if record.storage_key != stored.key:
+                await self.storage.delete(owner, stored.key)
+            return record
         except Exception:
             await self.storage.delete(owner, stored.key)
             raise

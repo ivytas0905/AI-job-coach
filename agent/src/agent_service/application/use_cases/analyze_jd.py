@@ -1,6 +1,8 @@
 """
 Analyze Job Description Use Case
 """
+import re
+
 from ...domain.models import JobDescription
 from ...infra.nlp.jd_analyzer import JDAnalyzer
 from datetime import datetime
@@ -25,12 +27,12 @@ class AnalyzeJDUseCase:
         Raises:
             ValueError: If text is too short or invalid
         """
-        # Validate input
-        if not raw_text or len(raw_text.strip()) < 50:
+        normalized_text = re.sub(r"\s+", " ", raw_text or "").strip()
+        if len(normalized_text) < 50:
             raise ValueError("Job description must be at least 50 characters")
 
         # Analyze JD
-        jd = await self.jd_analyzer.analyze(raw_text.strip())
+        jd = await self.jd_analyzer.analyze(normalized_text)
 
         # Set analysis timestamp
         jd.analyzed_at = datetime.now()

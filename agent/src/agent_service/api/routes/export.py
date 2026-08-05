@@ -13,7 +13,7 @@ from ...infra.generators.word_generator import WordGenerator
 from ...domain.models import ResumeSource, Resume, PersonalInfo, Experience, Education, Skill
 from ...utils.http import content_disposition_for_filename
 
-router = APIRouter(prefix="/api/resume", tags=["export"])
+router = APIRouter(prefix="/resume", tags=["export"])
 
 # ============= Request Schema =============
 class ContactInfo(BaseModel):

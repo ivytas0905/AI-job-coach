@@ -1,6 +1,7 @@
 """
 Bullet Point Optimizer - Rewrites bullets using STAR framework and JD keywords
 """
+import re
 from typing import List
 from ...domain.models import BulletPoint, JobDescription, BulletOptimization
 from ...application.ports.llm import LlmMessage, LlmProvider, require_text
@@ -39,6 +40,16 @@ class BulletOptimizer:
             experience_context
         )
 
+        unsupported_metrics = self._unsupported_metrics(bullet.text, optimized_text)
+        evidence_request = None
+        if unsupported_metrics:
+            evidence_request = (
+                "Please provide source evidence for "
+                + ", ".join(unsupported_metrics)
+                + "; the metric was omitted from this proposal."
+            )
+            optimized_text = bullet.text
+
         # Identify improvements
         improvements = self._identify_improvements(bullet.text, optimized_text, top_keywords)
 
@@ -51,8 +62,27 @@ class BulletOptimizer:
             optimized_text=optimized_text,
             improvements=improvements,
             keyword_matches=keyword_matches,
+            source_evidence=[bullet.text],
+            evidence_request=evidence_request,
             status="pending"
         )
+
+    @staticmethod
+    def _unsupported_metrics(original: str, optimized: str) -> List[str]:
+        metric_pattern = re.compile(
+            r"(?<![\w.])(?:[$€£¥]\s*)?\d+(?:,\d{3})*(?:\.\d+)?(?:\s*(?:%|[kmb]|x))?(?!\w)",
+            re.IGNORECASE,
+        )
+
+        def canonical(metric: str) -> str:
+            return re.sub(r"\s+", "", metric).replace(",", "").lower()
+
+        original_metrics = {canonical(metric) for metric in metric_pattern.findall(original)}
+        return [
+            metric
+            for metric in metric_pattern.findall(optimized)
+            if canonical(metric) not in original_metrics
+        ]
 
     async def _generate_optimized_text(
         self,
@@ -79,7 +109,7 @@ Target keywords to naturally incorporate (if relevant):
 
 Requirements:
 1. Use STAR framework when possible (Situation, Task, Action, Result)
-2. Include quantifiable metrics if not already present (estimate if needed)
+2. Preserve only metrics supported by the original bullet; never estimate facts
 3. Start with a strong action verb
 4. Naturally incorporate 2-3 relevant keywords from the list
 5. Keep it concise: 1-2 lines maximum (under 95 characters per line)
@@ -122,7 +152,6 @@ Return ONLY the optimized bullet point, no explanations."""
         improvements = []
 
         # Check for quantifiable metrics
-        import re
         has_numbers_original = bool(re.search(r'\d+', original))
         has_numbers_optimized = bool(re.search(r'\d+', optimized))
 

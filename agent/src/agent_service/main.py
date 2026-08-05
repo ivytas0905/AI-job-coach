@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.routes import build, export, jd, master, optimize, parse, tailor
+from .api.routes import agent, build, export, jd, master, optimize, parse, tailor
 from .api.auth import get_current_user
 from .config import get_settings
 from .wiring import get_database_manager, get_memory_cache
@@ -42,7 +42,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    for router in (build, export, optimize, parse, jd, master, tailor):
+    for router in (build, export, optimize, parse, jd, master, tailor, agent):
         application.include_router(
             router.router,
             prefix="/api/v1",

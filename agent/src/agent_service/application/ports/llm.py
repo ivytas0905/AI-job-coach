@@ -23,16 +23,18 @@ class ProviderError(RuntimeError):
 
 
 @dataclass(frozen=True)
-class LlmMessage:
-    role: str
-    content: str
-
-
-@dataclass(frozen=True)
 class ToolRequest:
     id: str
     name: str
     arguments: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class LlmMessage:
+    role: str
+    content: str | None
+    tool_requests: tuple[ToolRequest, ...] = ()
+    tool_call_id: str | None = None
 
 
 @dataclass(frozen=True)

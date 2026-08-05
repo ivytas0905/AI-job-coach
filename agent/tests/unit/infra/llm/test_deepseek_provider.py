@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from agent_service.application.ports.llm import LlmMessage, ProviderError
+from agent_service.application.ports.llm import LlmMessage, ProviderError, ToolRequest
 from agent_service.infra.llm.providers import DeepSeekProvider
 
 
@@ -32,6 +32,27 @@ async def test_normalizes_text_tools_and_usage():
     assert result.tool_requests[0].name == "analyze_jd"
     assert result.tool_requests[0].arguments == {"jd_id": "jd-1"}
     assert result.usage["total_tokens"] == 5
+
+
+async def test_serializes_assistant_tool_calls_and_correlated_results():
+    async def handler(request: httpx.Request) -> httpx.Response:
+        messages = __import__("json").loads(request.content)["messages"]
+        assert messages[0]["tool_calls"][0]["id"] == "call-1"
+        assert messages[1]["tool_call_id"] == "call-1"
+        return httpx.Response(200, json={
+            "choices": [{"finish_reason": "stop", "message": {"content": "done"}}]
+        })
+
+    provider = DeepSeekProvider("secret", "deepseek-chat", "https://example.test",
+                                transport=httpx.MockTransport(handler))
+    try:
+        result = await provider.complete([
+            LlmMessage("assistant", None, (ToolRequest("call-1", "echo", {"value": "ok"}),)),
+            LlmMessage("tool", '{"value":"ok"}', tool_call_id="call-1"),
+        ])
+    finally:
+        await provider.close()
+    assert result.text == "done"
 
 
 async def test_rejects_malformed_tool_arguments():

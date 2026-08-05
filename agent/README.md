@@ -289,23 +289,20 @@ agent/
 │       │   │   ├── parse.py        # Resume parsing endpoint
 │       │   │   ├── master.py       # Master resume CRUD
 │       │   │   ├── jd.py           # Job description endpoints
-│       │   │   ├── jd_analysis.py  # JD analysis endpoint
-│       │   │   ├── resume_optimization.py
 │       │   │   ├── tailor.py       # Tailored resume generation
-│       │   │   └── chat_assistant.py
+│       │   │   └── optimize.py     # Resume optimization endpoints
 │       │   └── schemas/
 │       │       ├── resume.py       # Resume models
 │       │       ├── job_description.py
-│       │       ├── optimization_schemas.py
 │       │       └── ...
 │       │
 │       ├── application/            # Application Layer
 │       │   └── use_cases/
 │       │       ├── analyze_jd.py
-│       │       ├── jd_analysis_enhanced.py
-│       │       ├── resume_optimization_enhanced.py
+│       │       ├── parse_resume.py
+│       │       ├── export_resume.py
 │       │       ├── tailor_resume.py
-│       │       └── chat_assistant.py
+│       │       └── optimize_resume.py
 │       │
 │       ├── domain/                 # Domain Layer
 │       │   ├── models.py           # Domain entities

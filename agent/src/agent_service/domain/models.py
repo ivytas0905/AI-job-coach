@@ -134,6 +134,8 @@ class BulletOptimization:
     optimized_text: str
     improvements: List[str] = field(default_factory=list)
     keyword_matches: List[str] = field(default_factory=list)
+    source_evidence: List[str] = field(default_factory=list)
+    evidence_request: Optional[str] = None
     status: str = "pending"  # 'pending', 'accepted', 'rejected'
 
 

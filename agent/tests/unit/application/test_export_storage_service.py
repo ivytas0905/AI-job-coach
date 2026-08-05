@@ -22,6 +22,11 @@ class FailingRepository:
         raise RuntimeError("metadata commit failed")
 
 
+class ReplayRepository:
+    async def create_export(self, **kwargs):
+        return type("Export", (), {"storage_key": "user-a/exports/original.pdf"})()
+
+
 @pytest.mark.asyncio
 async def test_failed_metadata_commit_removes_uploaded_export():
     storage = RecordingStorage()
@@ -38,3 +43,18 @@ async def test_failed_metadata_commit_removes_uploaded_export():
         )
 
     assert storage.deleted == [("user-a", "user-a/exports/resume.pdf")]
+
+
+@pytest.mark.asyncio
+async def test_idempotent_replay_removes_redundant_uploaded_object():
+    storage = RecordingStorage()
+    service = ExportStorageService(storage, ReplayRepository())
+
+    record = await service.persist_export(
+        owner="user-a", run_id="run-a", version_id="version-a",
+        key="exports/retry.pdf", content=b"pdf", content_type="application/pdf",
+        idempotency_key="export-key",
+    )
+
+    assert record.storage_key == "user-a/exports/original.pdf"
+    assert storage.deleted == [("user-a", "user-a/exports/retry.pdf")]
