@@ -13,9 +13,11 @@ from .wiring import get_database_manager, get_memory_cache
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    settings = get_settings()
     database = get_database_manager()
     cache = get_memory_cache()
-    await database.create_tables()
+    if settings.database_auto_create:
+        await database.create_tables()
     await cache.start()
     try:
         yield

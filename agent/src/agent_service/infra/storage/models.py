@@ -1,6 +1,6 @@
 """SQLAlchemy ORM Models for resume optimization system"""
 
-from sqlalchemy import Column, String, Integer, DateTime, JSON, Text, Float, ForeignKey
+from sqlalchemy import Column, String, Integer, DateTime, JSON, Text, Float, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -49,7 +49,11 @@ class ResumeVersionModel(Base):
     __tablename__ = 'resume_versions'
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(255), nullable=True, index=True)
+    run_id = Column(String(36), ForeignKey('tailoring_runs.id'), nullable=True, index=True)
     master_resume_id = Column(String(36), ForeignKey('master_resumes.id'), nullable=False, index=True)
+    parent_version_id = Column(String(36), ForeignKey('resume_versions.id'), nullable=True)
+    version_number = Column(Integer, nullable=True)
 
     # Version metadata
     version_name = Column(String(255), nullable=False, comment="e.g., 'Google MLE v1', 'Generic SWE v2'")
@@ -193,3 +197,81 @@ class OptimizationHistoryModel(Base):
 
     def __repr__(self):
         return f"<OptimizationHistory(id={self.id}, type={self.optimization_type}, action={self.user_action})>"
+
+
+class TailoringRunModel(Base):
+    __tablename__ = "tailoring_runs"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(255), nullable=False, index=True)
+    master_resume_id = Column(String(36), ForeignKey("master_resumes.id"), nullable=True)
+    jd_analysis_id = Column(String(36), ForeignKey("jd_analyses.id"), nullable=True)
+    state = Column(String(50), nullable=False, default="awaiting_resume")
+    provider = Column(String(100), nullable=False)
+    model = Column(String(255), nullable=False)
+    current_version_id = Column(String(36), nullable=True)
+    revision = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AgentMessageModel(Base):
+    __tablename__ = "agent_messages"
+    __table_args__ = (
+        UniqueConstraint("run_id", "sequence", name="uq_message_run_sequence"),
+    )
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    run_id = Column(String(36), ForeignKey("tailoring_runs.id"), nullable=False, index=True)
+    user_id = Column(String(255), nullable=False, index=True)
+    sequence = Column(Integer, nullable=False)
+    role = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ProposalModel(Base):
+    __tablename__ = "proposals"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    run_id = Column(String(36), ForeignKey("tailoring_runs.id"), nullable=False, index=True)
+    user_id = Column(String(255), nullable=False, index=True)
+    revision = Column(Integer, nullable=False, default=1)
+    status = Column(String(20), nullable=False, default="pending")
+    original_text = Column(Text, nullable=False)
+    suggested_text = Column(Text, nullable=False)
+    rationale = Column(Text, nullable=False)
+    source_evidence = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ProposalDecisionModel(Base):
+    __tablename__ = "proposal_decisions"
+    __table_args__ = (
+        UniqueConstraint("run_id", "idempotency_key", name="uq_decision_run_idempotency"),
+        UniqueConstraint(
+            "proposal_id", "proposal_revision", name="uq_decision_proposal_revision"
+        ),
+    )
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    proposal_id = Column(String(36), ForeignKey("proposals.id"), nullable=False, index=True)
+    run_id = Column(String(36), ForeignKey("tailoring_runs.id"), nullable=False, index=True)
+    user_id = Column(String(255), nullable=False, index=True)
+    proposal_revision = Column(Integer, nullable=False)
+    decision = Column(String(20), nullable=False)
+    idempotency_key = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ExportModel(Base):
+    __tablename__ = "exports"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    run_id = Column(String(36), ForeignKey("tailoring_runs.id"), nullable=False, index=True)
+    version_id = Column(String(36), ForeignKey("resume_versions.id"), nullable=False, index=True)
+    user_id = Column(String(255), nullable=False, index=True)
+    storage_key = Column(Text, nullable=False, unique=True)
+    content_type = Column(String(255), nullable=False)
+    size_bytes = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
