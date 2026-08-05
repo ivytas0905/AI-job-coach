@@ -3,7 +3,7 @@ Job Description Analyzer using LLM
 """
 from typing import List
 from ...domain.models import JobDescription, KeywordWeight
-from ...domain.ports import LlmProviderPort
+from ...application.ports.llm import LlmMessage, LlmProvider, require_text
 import json
 import re
 
@@ -11,7 +11,7 @@ import re
 class JDAnalyzer:
     """Analyzes job descriptions to extract structured information"""
 
-    def __init__(self, llm_provider: LlmProviderPort):
+    def __init__(self, llm_provider: LlmProvider):
         self.llm = llm_provider
 
     async def analyze(self, raw_text: str) -> JobDescription:
@@ -84,12 +84,15 @@ Keyword extraction rules:
 Return ONLY valid JSON, no markdown formatting."""
 
         try:
-            response = await self.llm.generate_text(
-                prompt=prompt,
-                system_prompt=system_prompt,
+            result = await self.llm.complete(
+                [
+                    LlmMessage(role="system", content=system_prompt),
+                    LlmMessage(role="user", content=prompt),
+                ],
                 temperature=0.3,  # Low temperature for consistent extraction
                 max_tokens=2000
             )
+            response = require_text(result)
 
             # Parse JSON response
             # Remove markdown code blocks if present

@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     llm_model: str = "deepseek-chat"
     deepseek_api_key: str | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
+    openai_api_key: str | None = None
+    openai_base_url: str = "https://api.openai.com/v1"
+    together_api_key: str | None = None
+    together_base_url: str = "https://api.together.xyz/v1"
     llm_timeout_seconds: float = 30.0
 
     clerk_issuer: str | None = None

@@ -1,7 +1,7 @@
 """Resume Section Extractor using LLM"""
 import json
 from typing import Dict
-from ...domain.ports import LlmProviderPort
+from ...application.ports.llm import LlmMessage, LlmProvider, require_text
 from ...domain.models import Resume, PersonalInfo, Experience, Education, Skill
 from ...utils.text_clean import TextCleaner
 
@@ -9,7 +9,7 @@ from ...utils.text_clean import TextCleaner
 class SectionExtractor:
     """Extract structured data from resume text using LLM"""
 
-    def __init__(self, llm_provider: LlmProviderPort):
+    def __init__(self, llm_provider: LlmProvider):
         """
         Initialize section extractor
 
@@ -85,12 +85,15 @@ IMPORTANT RULES:
         user_prompt = f"Parse this resume and extract structured data:\n\n{cleaned_text}"
 
         try:
-            response = await self.llm.generate_text(
-                prompt=user_prompt,
-                system_prompt=system_prompt,
+            result = await self.llm.complete(
+                [
+                    LlmMessage(role="system", content=system_prompt),
+                    LlmMessage(role="user", content=user_prompt),
+                ],
                 temperature=0.1,  # Lower temperature for faster, more consistent results
                 max_tokens=1500  # Reduced tokens for faster response
             )
+            response = require_text(result)
 
             print(f"[DEBUG] LLM Response: {response[:500]}...")  # Print first 500 chars
 

@@ -3,13 +3,13 @@ Bullet Point Optimizer - Rewrites bullets using STAR framework and JD keywords
 """
 from typing import List
 from ...domain.models import BulletPoint, JobDescription, BulletOptimization
-from ...domain.ports import LlmProviderPort
+from ...application.ports.llm import LlmMessage, LlmProvider, require_text
 
 
 class BulletOptimizer:
     """Optimizes bullet points based on JD requirements"""
 
-    def __init__(self, llm_provider: LlmProviderPort):
+    def __init__(self, llm_provider: LlmProvider):
         self.llm = llm_provider
 
     async def optimize_bullet(
@@ -89,12 +89,15 @@ Requirements:
 Return ONLY the optimized bullet point, no explanations."""
 
         try:
-            optimized = await self.llm.generate_text(
-                prompt=prompt,
-                system_prompt=system_prompt,
+            result = await self.llm.complete(
+                [
+                    LlmMessage(role="system", content=system_prompt),
+                    LlmMessage(role="user", content=prompt),
+                ],
                 temperature=0.7,
                 max_tokens=200
             )
+            optimized = require_text(result)
 
             # Clean up the response
             optimized = optimized.strip()
