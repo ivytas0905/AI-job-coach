@@ -8,6 +8,8 @@ from .application.ports.retrieval import EvidenceRetriever
 from .application.services.export_storage import ExportStorageService
 from .infra.llm.registry import build_provider
 from .infra.nlp.section_extractor import SectionExtractor
+from .infra.parsing.pdf_parser import PDFParser
+from .infra.parsing.docx_parser import DOCXParser
 from .infra.nlp.jd_analyzer import JDAnalyzer
 from .infra.nlp.bullet_optimizer import BulletOptimizer
 from .infra.matching.content_selector import ContentSelector
@@ -18,6 +20,8 @@ from .application.use_cases.parse_resume import ParseResumeUseCase
 from .application.use_cases.analyze_jd import AnalyzeJDUseCase
 from .application.use_cases.tailor_resume import TailorResumeUseCase
 from .application.use_cases.export_resume import ExportResumeUseCase
+from .application.use_cases.build_resume import BuildResumeUseCase
+from .application.use_cases.enhance_content import EnhanceContentUseCase, ResumeContentEnhancer
 from .agent.orchestrator import TailoringOrchestrator
 from .infra.generators.pdf_generator import PDFGenerator
 from .infra.generators.word_generator import WordGenerator
@@ -107,8 +111,7 @@ def get_object_storage() -> ObjectStorage:
 def get_parse_resume_use_case() -> ParseResumeUseCase:
     """Get parse resume use case instance"""
     section_extractor = get_section_extractor()
-    file_storage = get_file_storage()
-    return ParseResumeUseCase(section_extractor, file_storage)
+    return ParseResumeUseCase(section_extractor, PDFParser(), DOCXParser())
 
 
 def get_analyze_jd_use_case() -> AnalyzeJDUseCase:
@@ -122,6 +125,18 @@ def get_tailor_resume_use_case() -> TailorResumeUseCase:
     content_selector = get_content_selector()
     bullet_optimizer = get_bullet_optimizer()
     return TailorResumeUseCase(content_selector, bullet_optimizer)
+
+
+def get_build_resume_use_case() -> BuildResumeUseCase:
+    return BuildResumeUseCase(ResumeContentEnhancer(get_enhance_content_use_case()))
+
+
+def get_enhance_content_use_case() -> EnhanceContentUseCase:
+    return EnhanceContentUseCase(get_llm_provider())
+
+
+def get_export_resume_use_case() -> ExportResumeUseCase:
+    return ExportResumeUseCase(PDFGenerator(), WordGenerator())
 
 
 # ========== New Enhanced Services (Phase 2-4) ==========
@@ -150,7 +165,7 @@ def get_tailoring_orchestrator() -> TailoringOrchestrator:
         parse_resume=get_parse_resume_use_case(),
         analyze_jd=get_analyze_jd_use_case(),
         tailor_resume=get_tailor_resume_use_case(),
-        export_resume=ExportResumeUseCase(PDFGenerator(), WordGenerator()),
+        export_resume=get_export_resume_use_case(),
         evidence_retriever=evidence_retriever,
     )
     return TailoringOrchestrator(

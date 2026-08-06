@@ -8,8 +8,8 @@ from ...domain.models import (
     TailoredResume,
     BulletOptimization
 )
-from ...infra.matching.content_selector import ContentSelector
-from ...infra.nlp.bullet_optimizer import BulletOptimizer
+from ..ports.resume import BulletOptimizerPort, ContentSelectorPort
+from ...domain.resume_policies import calculate_ats_score, select_skills
 from datetime import datetime
 
 
@@ -18,8 +18,8 @@ class TailorResumeUseCase:
 
     def __init__(
         self,
-        content_selector: ContentSelector,
-        bullet_optimizer: BulletOptimizer
+        content_selector: ContentSelectorPort,
+        bullet_optimizer: BulletOptimizerPort
     ):
         self.content_selector = content_selector
         self.bullet_optimizer = bullet_optimizer
@@ -75,7 +75,7 @@ class TailorResumeUseCase:
         )
 
         # Step 4: Calculate ATS score (simplified for MVP)
-        ats_score = self._calculate_ats_score(match_score, all_optimizations)
+        ats_score = calculate_ats_score(match_score, all_optimizations)
 
         # Step 5: Create tailored resume
         tailored = TailoredResume(
@@ -85,80 +85,10 @@ class TailorResumeUseCase:
             selected_experience_ids=selected_exp_ids,
             selected_bullet_optimizations=all_optimizations,
             selected_education_ids=[edu.id for edu in master_resume.education[:2]],  # Top 2
-            selected_skills=self._select_skills(master_resume, jd),
+            selected_skills=select_skills(master_resume, jd),
             match_score=match_score,
             ats_score=ats_score,
             created_at=datetime.now()
         )
 
         return tailored
-
-    def _calculate_ats_score(
-        self,
-        match_score: float,
-        optimizations: List[BulletOptimization]
-    ) -> float:
-        """
-        Calculate ATS score based on match score and optimizations
-
-        Args:
-            match_score: Keyword match score
-            optimizations: List of bullet optimizations
-
-        Returns:
-            ATS score from 0-100
-        """
-        # Base score from keyword matching (60%)
-        ats_score = match_score * 0.6
-
-        # Bonus for having quantifiable metrics (20%)
-        if optimizations:
-            metrics_count = sum(
-                1 for opt in optimizations
-                if any('metric' in imp.lower() or 'quantif' in imp.lower() for imp in opt.improvements)
-            )
-            metrics_ratio = metrics_count / len(optimizations)
-            ats_score += metrics_ratio * 20
-
-        # Bonus for keyword-rich bullets (20%)
-        if optimizations:
-            avg_keywords = sum(len(opt.keyword_matches) for opt in optimizations) / len(optimizations)
-            keyword_bonus = min((avg_keywords / 3) * 20, 20)  # Up to 20 points
-            ats_score += keyword_bonus
-
-        return min(ats_score, 100.0)
-
-    def _select_skills(
-        self,
-        master_resume: MasterResume,
-        jd: JobDescription
-    ) -> List[str]:
-        """
-        Select most relevant skills
-
-        Args:
-            master_resume: Master resume
-            jd: Job description
-
-        Returns:
-            List of selected skill names
-        """
-        jd_skills = set([s.lower() for s in jd.required_skills + jd.preferred_skills])
-        resume_skills = [skill.name for skill in master_resume.skills if skill.name]
-
-        # Match resume skills with JD skills
-        matched_skills = []
-        unmatched_skills = []
-
-        for skill_name in resume_skills:
-            if skill_name.lower() in jd_skills:
-                matched_skills.append(skill_name)
-            else:
-                unmatched_skills.append(skill_name)
-
-        # Select matched skills first, then fill with unmatched up to 15 total
-        selected = matched_skills[:15]
-        if len(selected) < 15:
-            selected.extend(unmatched_skills[:(15 - len(selected))])
-
-        return selected

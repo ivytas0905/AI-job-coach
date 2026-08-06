@@ -5,6 +5,7 @@ import re
 from typing import List
 from ...domain.models import BulletPoint, JobDescription, BulletOptimization
 from ...application.ports.llm import LlmMessage, LlmProvider, require_text
+from ...domain.resume_policies import enforce_metric_evidence
 
 
 class BulletOptimizer:
@@ -40,15 +41,9 @@ class BulletOptimizer:
             experience_context
         )
 
-        unsupported_metrics = self._unsupported_metrics(bullet.text, optimized_text)
-        evidence_request = None
-        if unsupported_metrics:
-            evidence_request = (
-                "Please provide source evidence for "
-                + ", ".join(unsupported_metrics)
-                + "; the metric was omitted from this proposal."
-            )
-            optimized_text = bullet.text
+        evidence = enforce_metric_evidence(bullet.text, optimized_text)
+        evidence_request = evidence.evidence_request
+        optimized_text = evidence.accepted_text
 
         # Identify improvements
         improvements = self._identify_improvements(bullet.text, optimized_text, top_keywords)

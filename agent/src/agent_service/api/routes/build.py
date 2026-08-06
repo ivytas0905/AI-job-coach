@@ -3,21 +3,26 @@ Build Resume API routes
 Handles resume construction from form data
 Does NOT handle file export (see export.py)
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Any, List, Optional
+from typing import List, Optional
 from dataclasses import asdict
 
 
-from ...application.use_cases.build_resume import BuildResumeUseCase
+from ...application.use_cases.build_resume import (
+    BuildContactInput,
+    BuildEducationInput,
+    BuildExperienceInput,
+    BuildResumeInput,
+    BuildResumeUseCase,
+)
+from ...wiring import get_build_resume_use_case
 from ...domain.models import (
     Resume, 
     PersonalInfo, 
     Experience, 
     Education, 
     Skill,
-    ExperienceType, 
-    ResumeSource
 )
 router = APIRouter(prefix="/resume/build", tags=["build"])
 
@@ -48,7 +53,7 @@ class EducationInfo(BaseModel):
     degree: str
     school: str
     startDate: str
-    endDate: Optional[str] = None,
+    endDate: Optional[str] = None
     location: Optional[str] = None
 
     
@@ -68,7 +73,10 @@ class BuildResumeRequest(BaseModel):
 # ============= API Endpoints =============
 
 @router.post("/")
-async def build_resume(request: BuildResumeRequest):
+async def build_resume(
+    request: BuildResumeRequest,
+    use_case: BuildResumeUseCase = Depends(get_build_resume_use_case),
+):
     """
     Build resume from form data
     
@@ -81,36 +89,21 @@ async def build_resume(request: BuildResumeRequest):
     Note: File generation (PDF/Word) is handled by /api/resume/generate
     """
     try:
-        # Convert frontend data to domain model
-        resume = _convert_to_domain_model(request)
-        
-        # Create use case (inject dependencies)
-        # For now, pass None if services aren't ready
-        build_use_case = BuildResumeUseCase(
-            llm_service=None,  # TODO: Inject actual LLM service
-            retriever=None,    # TODO: Inject actual retriever
-            template_engine=None  # TODO: Inject actual template engine
-        )
-        
-        # Execute use case
-        result = build_use_case.execute(request)
-        preview_html = result.get("preview_html")
-        if preview_html is None:
-            preview_html = _generate_simple_preview_html(resume)
+        result = await use_case.execute(_to_build_input(request))
+        preview_html = _generate_simple_preview_html(result.resume)
 
         return {
             "success": True,
-            "resume": result["resume"],
+            "resume": asdict(result.resume),
             "preview_html": preview_html,  # If template engine is ready
             "message": "Resume built successfully"
         }
         
     except Exception as e:
-        print(f"Error building resume: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to build resume: {str(e)}"
-        )
+            detail="Failed to build resume"
+        ) from e
 
 
 @router.post("/validate")
@@ -191,6 +184,42 @@ async def generate_preview(request: BuildResumeRequest):
 
 
 # ============= Helper Functions =============
+
+def _to_build_input(request: BuildResumeRequest) -> BuildResumeInput:
+    return BuildResumeInput(
+        contact=BuildContactInput(
+            full_name=request.contact.fullName,
+            email=request.contact.email,
+            phone=request.contact.phone,
+            location=request.contact.location,
+            title=request.contact.title,
+        ),
+        experiences=tuple(
+            BuildExperienceInput(
+                position=item.position,
+                company=item.company,
+                start_date=item.startDate,
+                end_date=item.endDate,
+                location=item.location,
+                description=item.description,
+            )
+            for item in request.experience
+        ),
+        education=tuple(
+            BuildEducationInput(
+                degree=item.degree,
+                school=item.school,
+                start_date=item.startDate,
+                end_date=item.endDate,
+                location=item.location,
+            )
+            for item in request.education
+        ),
+        skills=tuple(request.skills),
+        summary=request.summary,
+        target_job=request.targetJob,
+        enhance_with_ai=request.enhanceWithAI,
+    )
 
 def _convert_to_domain_model(request: BuildResumeRequest) -> Resume:
     """

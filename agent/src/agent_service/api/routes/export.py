@@ -2,14 +2,13 @@
 Export resume to PDF/Word
 Shared endpoint used by both Build and Upload workflows
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
-from typing import Dict, Any, Literal
+from typing import Literal
 
 from ...application.use_cases.export_resume import ExportResumeUseCase
-from ...infra.generators.pdf_generator import PDFGenerator
-from ...infra.generators.word_generator import WordGenerator
+from ...wiring import get_export_resume_use_case
 from ...domain.models import ResumeSource, Resume, PersonalInfo, Experience, Education, Skill
 from ...utils.http import content_disposition_for_filename
 
@@ -60,7 +59,10 @@ class GenerateResumeRequest(BaseModel):
 
 # ============= API Endpoints =============
 @router.post("/generate")
-async def generate_resume(request: GenerateResumeRequest):
+async def generate_resume(
+    request: GenerateResumeRequest,
+    export_use_case: ExportResumeUseCase = Depends(get_export_resume_use_case),
+):
     """
     Generate resume file (PDF or Word)
     
@@ -78,17 +80,6 @@ async def generate_resume(request: GenerateResumeRequest):
         # 1. Convert frontend data to domain model
         resume = _convert_to_domain_model(request.resumeData)
         
-        # 2. Create generators
-        pdf_gen = PDFGenerator()
-        word_gen = WordGenerator()
-        
-        # 3. Create export use case
-        export_use_case = ExportResumeUseCase(
-            pdf_generator=pdf_gen,
-            word_generator=word_gen
-        )
-        
-        # 4. Generate file
         file_content = export_use_case.execute(
             resume=resume,
             format=request.format,

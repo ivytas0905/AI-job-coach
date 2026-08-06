@@ -7,7 +7,8 @@ from reportlab.pdfgen import canvas
 from agent_service.application.use_cases.parse_resume import ParseResumeUseCase
 from agent_service.application.use_cases.analyze_jd import AnalyzeJDUseCase
 from agent_service.domain.models import JobDescription, PersonalInfo, Resume
-from agent_service.infra.storage.files import FileStorage
+from agent_service.infra.parsing.docx_parser import DOCXParser
+from agent_service.infra.parsing.pdf_parser import PDFParser
 
 
 class CapturingExtractor:
@@ -44,7 +45,7 @@ def _pdf_bytes():
 )
 async def test_parse_resume_normalizes_extracted_text(filename, content, tmp_path):
     extractor = CapturingExtractor()
-    use_case = ParseResumeUseCase(extractor, FileStorage(str(tmp_path)))
+    use_case = ParseResumeUseCase(extractor, PDFParser(), DOCXParser())
 
     result = await use_case.execute(content, filename)
 
@@ -57,7 +58,7 @@ async def test_parse_resume_normalizes_extracted_text(filename, content, tmp_pat
     [("resume.pdf", b"not a pdf"), ("resume.docx", b"not a docx")],
 )
 async def test_parse_resume_rejects_malformed_files(filename, content, tmp_path):
-    use_case = ParseResumeUseCase(CapturingExtractor(), FileStorage(str(tmp_path)))
+    use_case = ParseResumeUseCase(CapturingExtractor(), PDFParser(), DOCXParser())
 
     with pytest.raises(ValueError, match="Failed to parse"):
         await use_case.execute(content, filename)

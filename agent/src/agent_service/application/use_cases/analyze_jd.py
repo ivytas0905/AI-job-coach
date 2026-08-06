@@ -4,14 +4,14 @@ Analyze Job Description Use Case
 import re
 
 from ...domain.models import JobDescription
-from ...infra.nlp.jd_analyzer import JDAnalyzer
+from ..ports.parsing import JobDescriptionAnalyzer
 from datetime import datetime
 
 
 class AnalyzeJDUseCase:
     """Analyzes job description and extracts structured information"""
 
-    def __init__(self, jd_analyzer: JDAnalyzer):
+    def __init__(self, jd_analyzer: JobDescriptionAnalyzer):
         self.jd_analyzer = jd_analyzer
 
     async def execute(self, raw_text: str) -> JobDescription:
