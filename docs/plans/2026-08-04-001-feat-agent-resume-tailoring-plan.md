@@ -197,6 +197,7 @@ flowchart TB
 - KTD10. **Stream progress, persist authoritative state.** The API may stream assistant text and progress events, but clients recover from the persisted run snapshot rather than treating the stream as the source of truth. Governs R4, R8, R9.
 - KTD11. **Replace legacy resume navigation only after parity gates pass.** The new workspace becomes primary after upload, analysis, approval, version, and export checks succeed; the independent LeetCode API remains covered by regression tests. Governs R1, R9, R12.
 - KTD12. **Expose one run-scoped browser contract under `/api/v1/agent`.** The new frontend uses authenticated run commands, snapshots, histories, exports, and a resumable SSE event feed. The SSE client uses authenticated fetch streaming rather than putting a Clerk token in the URL or relying on native `EventSource`, which cannot attach the required bearer header. The frontend does not call the internal tool registry or legacy capability routes directly. Governs R1-R9, R13.
+- KTD13. **Enforce inward dependencies for resume capabilities.** (session-settled: user-approved — chosen over keeping business logic in routes and concrete infrastructure dependencies in use cases: stable business rules must remain reusable across HTTP, Agent tools, and future providers.) Routes own HTTP mapping only; use cases coordinate one user goal through application ports; domain models and domain services own deterministic invariants and scoring policies; infrastructure implements LLM, parser, generator, storage, and rendering adapters. Empty use-case placeholders are removed unless they represent a distinct invoked capability. Governs R2, R3, R6, R12.
 
 ### High-Level Technical Design
 
@@ -212,10 +213,13 @@ flowchart TB
   ORCH --> LLM[Provider capability port]
   LLM --> DS[DeepSeek adapter]
   LLM -. future .-> KIMI[Kimi adapter]
-  TOOLS --> LEGACY[Characterized domain capabilities]
+  TOOLS --> USECASES[Application use cases]
+  USECASES --> DOMAIN[Domain models and policies]
+  USECASES --> PORTS[Application ports]
+  PORTS --> INFRA[LLM parser generator adapters]
   STATE --> DB[(Relational database)]
-  LEGACY --> DB
-  LEGACY --> STORE[(Object storage)]
+  INFRA --> DB
+  INFRA --> STORE[(Object storage)]
   API --> STREAM[Progress stream]
 ```
 
@@ -320,9 +324,10 @@ Existing capabilities may remain in their current modules when characterization 
 2. Build provider and identity foundations independently in U2 and U3 after U1.
 3. Normalize persistence and durable storage in U4 after identity contracts exist.
 4. Characterize and adapt resume capabilities in U5 after U1, U2, and U4.
-5. Build the persisted orchestrator and approval transaction in U6.
-6. Expose the agent API in U7, then replace the frontend workflow in U8.
-7. Run parity, LeetCode non-regression, rollout, and documentation gates in U9.
+5. Move HTTP-embedded capability flows behind application boundaries in U10, then move deterministic policies and invariants into the domain in U11.
+6. Build the persisted orchestrator and approval transaction in U6 after U5, U10, and U11.
+7. Expose the agent API in U7, then replace the frontend workflow in U8.
+8. Run parity, LeetCode non-regression, rollout, and documentation gates in U9.
 
 ### System-Wide Impact
 
@@ -331,6 +336,8 @@ Existing capabilities may remain in their current modules when characterization 
 - **External APIs:** DeepSeek errors, timeouts, rate limits, malformed tools, and usage normalize behind a provider port. LeetCode remains independent.
 - **Frontend and operations:** The workspace reloads persisted snapshots; readiness separates database, storage, and provider status; startup makes no paid call.
 - **Agent parity:** UI and Agent use the same typed capabilities, so no UI-only mutation bypasses approval.
+- **Layer ownership:** Legacy HTTP routes and Agent tools converge on the same application use cases. Moving deterministic policies into the domain must not create a second persistence path or weaken workflow approval gates.
+- **Compatibility:** Existing legacy route contracts remain characterized until U9 retires or redirects them. Internal module moves do not justify changing public schemas, media types, filenames, or error semantics.
 
 ### Risks and Mitigations
 
@@ -345,6 +352,8 @@ Existing capabilities may remain in their current modules when characterization 
 | Resume migration breaks LeetCode | Adjacent regression | Preserve its proxy and add API/browser regression tests. |
 | Resume/JD content leaks through logs or streams | User PII exposure | Log resource IDs and error categories instead of source text; owner-scope snapshots, events, exports, and downloads. |
 | Malicious or oversized uploads | Resource exhaustion or parser abuse | Enforce byte limits and detected-type checks before parsing; reject empty or unsupported documents with stable client errors. |
+| Layer refactor changes behavior | Legacy HTTP and Agent results diverge | Characterize both callers first, migrate one capability at a time, and require shared-use-case integration coverage. |
+| Over-correcting the anemic domain | Domain imports LLM, files, persistence, or clocks | Move only deterministic invariants and policies into domain code; keep external effects behind application ports. |
 
 ### Sources and Research
 
@@ -454,14 +463,57 @@ On wide screens, the conversation and current action occupy the primary column w
 
 ### U5. Characterize and adapt resume capabilities
 
-**Goal / trace:** Typed tools for reliable parsing, analysis, tailoring and export (R2, R3, R6, R12; AE3). **Dependencies:** U1, U2, U4.  
-**Files:** Modify relevant use cases and parsing/matching/NLP/generator modules; create `agent/tool_registry.py`, tool adapters, characterization fixtures/tests and tool-registry tests.  
-**Approach:** Implement KTD3; separate reads from proposals/mutations, retain source evidence, and remove the missing `EnhancedLLMService` dependency.  
-**Scenarios / verification:** PDF/DOCX normalize; bad files fail; JD analysis is stable; tool schemas/effects/states validate; disallowed tools cannot run; unsupported facts request evidence; approved versions export valid PDF/DOCX.
+**Goal / trace:** Preserve reliable parsing, analysis, tailoring, evidence, and export behavior behind typed Agent tools before changing internal ownership (R2, R3, R6, R12; AE3). **Dependencies:** U1, U2, U4.
+**Files:** Modify `agent/src/agent_service/tool_registry.py`, `agent/src/agent_service/tools/resume_tools.py`, the invoked files under `agent/src/agent_service/application/use_cases/`, and the required parsing, matching, NLP, vector, and generator adapters. Extend `agent/tests/characterization/test_resume_capabilities.py`, `agent/tests/unit/application/test_tool_registry.py`, and `agent/tests/integration/tools/test_resume_tool_registry.py`.
+**Approach:** Implement KTD3 and establish characterization seams for KTD13. Inventory every active legacy route and Agent tool against an invoked capability. Preserve existing public request and response behavior while distinguishing read, proposal, and approved mutation effects. Keep source evidence and trusted owner/run context in tool results. Treat the existing tool registry and characterization suite as the pattern; do not duplicate capability logic inside tool handlers.
+**Execution note:** Add missing characterization coverage before moving legacy logic across layers.
+**Test scenarios:**
+
+1. Equivalent PDF and DOCX sources normalize to stable text and malformed or unsupported files fail without partial persistence.
+2. Equivalent JD whitespace produces stable analyzed source data and provider failures remain typed at the application boundary.
+3. Tool metadata exposes the declared schema, result, effect, and allowed states; invalid arguments and disallowed states never invoke a handler.
+4. Tailoring outputs preserve source evidence, request evidence for unsupported facts, and never turn a proposal into an approved version.
+5. Only an approved version exports valid PDF and DOCX bytes containing selected content and excluding unselected content.
+
+**Verification:** Characterization, tool-registry unit, and real-adapter integration tests pass without paid provider calls.
+
+### U10. Extract resume operations from HTTP routes
+
+**Goal / trace:** Make each active resume endpoint a transport adapter over one application capability instead of a second business-logic implementation (R2, R3, R12; KTD13). **Dependencies:** U5.
+**Files:** Modify `agent/src/agent_service/api/routes/optimize.py`, `agent/src/agent_service/api/routes/build.py`, `agent/src/agent_service/api/routes/export.py`, `agent/src/agent_service/api/routes/parse.py`, `agent/src/agent_service/api/routes/jd.py`, `agent/src/agent_service/api/routes/tailor.py`, `agent/src/agent_service/api/schemas/`, `agent/src/agent_service/application/use_cases/build_resume.py`, `agent/src/agent_service/application/use_cases/enhance_content.py`, `agent/src/agent_service/application/use_cases/optimize_resume.py`, `agent/src/agent_service/application/ports/`, and `agent/src/agent_service/wiring.py`. Create `agent/tests/unit/application/test_build_resume.py`, `agent/tests/unit/application/test_enhance_content.py`, `agent/tests/integration/api/test_legacy_resume_capabilities.py`, and `agent/tests/unit/architecture/test_layer_dependencies.py`.
+**Approach:** Implement KTD13. Move normalization, prompt-policy selection, capability coordination, and result construction out of routes. Keep request/schema conversion, authentication dependencies, HTTP status mapping, headers, and response serialization in the API layer. Replace direct construction of generators and providers with wiring-injected use cases. Remove `optimize_resume.py` and unused optimizer ports if no active caller represents a distinct full-resume optimization goal; otherwise implement that capability with an explicit input/output contract. Rewrite `BuildResumeUseCase` so it accepts application input rather than `BuildResumeRequest`, remove unused dependencies and commented implementations, and make optional enhancement an injected capability rather than an undefined private method. `wiring.py` must supply every required collaborator; routes must not instantiate the use case with placeholder `None` values. Assign request-to-domain conversion to one boundary and delete the duplicate conversion path.
+**Execution note:** Preserve the current HTTP contract with integration tests before thinning each route. Keep that compatibility only until U9 explicitly retires or redirects the legacy endpoint.
+**Test scenarios:**
+
+1. Experience and summary enhancement reject blank content, invoke the provider-neutral capability once, and return the established response schema.
+2. Provider authentication, rate, timeout, malformed-response, and server failures map to stable public errors without leaking prompts, resume content, or internals.
+3. Build converts valid application input into a domain resume exactly once; `enhanceWithAI=False` performs no provider call, while `enhanceWithAI=True` uses the injected enhancement capability or returns a typed configuration failure.
+4. Export obtains its generator through wiring, preserves media type and safe filename headers, and rejects unsupported formats through a typed application error.
+5. Parse, JD, tailor, build, optimize, and export routes contain no direct provider, parser, generator, repository, or business-policy construction after migration.
+6. Existing authenticated ownership and Agent tool tests continue to pass, proving that HTTP and Agent callers share the same capabilities.
+7. Composition tests fail when a required build collaborator is absent and prove that active routes never inject placeholder `None` dependencies.
+
+**Verification:** Route integration tests prove unchanged successful contracts and explicit failure mapping; dependency scans show no API-to-infrastructure construction for migrated capabilities.
+
+### U11. Move deterministic resume rules into the domain
+
+**Goal / trace:** Give stable resume policies one testable owner while keeping orchestration and external technology outside the domain (R2, R6; KTD13). **Dependencies:** U5, U10.
+**Files:** Modify `agent/src/agent_service/domain/models.py` and migrate or delete the misplaced contracts in `agent/src/agent_service/domain/ports.py`; create focused domain policy modules under `agent/src/agent_service/domain/` when behavior does not belong to one entity. Modify `agent/src/agent_service/application/ports/`, `agent/src/agent_service/application/use_cases/tailor_resume.py`, `agent/src/agent_service/application/use_cases/analyze_jd.py`, `agent/src/agent_service/application/use_cases/parse_resume.py`, `agent/src/agent_service/application/use_cases/export_resume.py`, and their wiring. Create `agent/tests/unit/domain/test_ats_scoring.py`, `agent/tests/unit/domain/test_skill_selection.py`, `agent/tests/unit/domain/test_proposal_evidence_policy.py`, and extend `agent/tests/unit/application/` plus `agent/tests/unit/architecture/test_layer_dependencies.py`.
+**Approach:** Implement KTD13 without forcing infrastructure behavior into entities. Move deterministic ATS scoring, skill selection, proposal/evidence invariants, and other entry-point-independent rules into domain entities or domain services. Keep file parsing, LLM prompts, provider calls, rendering, persistence, and clocks behind canonical application ports or injected collaborators. Replace direct `application.use_cases -> infra.*` imports with application-port dependencies. Use cases remain responsible for input normalization, coordinating collaborators, and returning one complete outcome. Remove dead ports, empty modules, debug prints, commented implementations, and imports that point from application or domain back to API schemas.
+**Execution note:** Implement domain behavior test-first, then reduce use cases to orchestration while rerunning U5 characterization tests after each move.
+**Test scenarios:**
+
+1. ATS scoring applies the declared weights and bonuses, handles no optimizations, and never returns a value outside 0-100.
+2. Skill selection prioritizes JD matches, handles missing skill names safely, preserves deterministic order, and respects the output limit.
+3. Proposal and evidence rules reject unsupported factual mutations independently of HTTP, Agent, database, or provider adapters.
+4. Use cases call their ports in the required order, propagate typed failures, and construct the same characterized domain results.
+5. Domain tests run with no FastAPI, SQLAlchemy, boto3, parser, generator, or LLM imports; application use cases import no concrete `infra.*` classes.
+
+**Verification:** Domain and application unit tests pass in isolation, architecture import checks enforce the dependency direction, and U5 characterization plus Agent tool integration suites remain green.
 
 ### U6. Build the persisted agent workflow
 
-**Goal / trace:** Bounded orchestration, legal transitions, atomic approval and recovery (R3-R9, R11; AE1-AE5). **Dependencies:** U2-U5.  
+**Goal / trace:** Bounded orchestration, legal transitions, atomic approval and recovery (R3-R9, R11; AE1-AE5). **Dependencies:** U2-U5, U10, U11.
 **Files:** Create `agent/src/agent_service/agent/orchestrator.py`, `agent/src/agent_service/agent/state_machine.py`, run command/query services, durable event records, `agent/tests/unit/agent/`, and PostgreSQL approval/resume integration tests; modify workflow models, repository, migrations, and wiring.
 **Approach:** Implement KTD2, KTD5, KTD6 and KTD8. Bind configured provider/model defaults at run creation, derive allowed tools from the persisted state, bound turns and tool calls, persist ordered events before publishing them, and make an accepted proposal decision plus its resume version one idempotent transaction. Add the evidence-request and event-sequence fields needed by the browser snapshot and reconnect contract.
 **Scenarios / verification:** Inputs gate analysis; proposals create no version; rejection and revision requests record only decisions; acceptance creates exactly one version under retries and PostgreSQL concurrency; stale revisions return a typed conflict; reused idempotency keys replay the original result; provider/tool failures recover from the last safe state; restarts and second devices load an equivalent snapshot; event sequences stay ordered; provider pinning holds.
@@ -493,8 +545,9 @@ On wide screens, the conversation and current action occupy the primary column w
 
 | Gate | Command | Applies to | Passing signal |
 |---|---|---|---|
-| Python syntax | `python -m compileall -q src` from `agent/` | U1-U7, U9 | No syntax or merge-marker failures. |
-| Backend tests | `python -m pytest` from `agent/` | U1-U7, U9 | Unit, characterization, contract, integration, migration, and smoke suites pass. |
+| Python syntax | `python -m compileall -q src` from `agent/` | U1-U7, U9-U11 | No syntax or merge-marker failures. |
+| Architecture boundaries | `python -m pytest tests/unit/architecture/test_layer_dependencies.py` from `agent/` | U10, U11 | Routes do not construct migrated infrastructure; application and domain contain no forbidden inward-layer imports. |
+| Backend tests | `python -m pytest` from `agent/` | U1-U7, U9-U11 | Unit, domain, characterization, contract, integration, migration, and smoke suites pass. |
 | Backend startup | `python -m uvicorn agent_service.main:app --app-dir src` from `agent/` | U1, U7, U9 | App starts with test configuration and required routes register once. |
 | Database migration | `python -m alembic upgrade head` from `agent/` | U4, U6 | Fresh and prior test schemas reach the expected head revision. |
 | Frontend install | `npm ci` from `apps/web-legacy/` | U1, U8, U9 | Canonical lockfile installs without mutation. |
@@ -513,12 +566,13 @@ Credentialed provider smoke remains an explicit pre-release gate and is not requ
 ## Definition of Done
 
 - The Product Contract remains intact except for the confirmed LeetCode non-regression clarification.
-- U1-U9 satisfy their verification outcomes and cited test scenarios.
+- U1-U11 satisfy their verification outcomes and cited test scenarios.
 - No unresolved merge markers, missing critical modules, duplicate dependency definitions, or exception-swallowed route imports remain.
 - The backend authenticates Clerk tokens and enforces owner scope in routes, repositories, streams, and object storage.
 - The complete resume tailoring workflow persists and resumes across process restarts and browser devices.
 - No formal resume mutation occurs without a current, recorded approval; duplicate approvals do not create duplicate versions.
 - DeepSeek is the configured first provider, and the application layer contains no DeepSeek-specific request or response logic.
+- Active resume routes contain transport concerns only; application use cases depend on ports rather than concrete infrastructure; deterministic resume rules have one domain owner and isolated unit coverage.
 - Existing conversations retain their provider and model when deployment defaults change.
 - The new workspace completes upload, JD analysis, proposal review, approval, version history, restore, and PDF/DOCX export.
 - Legacy resume entry points redirect only after parity gates pass.
@@ -551,6 +605,7 @@ Credentialed provider smoke remains an explicit pre-release gate and is not requ
 - **KTD8–KTD9：关系数据库保存业务状态，对象存储保存文件。** 消息、运行、提议、决定、版本和导出记录分别持久化。生产使用 S3 兼容存储，本地开发使用同一接口后的文件系统适配器。第一版不要求 Redis。
 - **KTD10：流负责即时进度，持久化快照负责事实。** 断线重连后从服务端快照恢复，不能把浏览器内存或事件流当作权威状态。
 - **KTD11：能力对齐后再退役旧页面。** 上传、分析、确认、版本、恢复和导出全部通过后，才把旧简历入口重定向到新工作区；LeetCode API 必须通过回归测试。
+- **KTD13：强制依赖方向向内。** Route 只处理 HTTP 映射，Use Case 通过应用端口协调一次用户目标，Domain 保存稳定业务规则，Infra 实现 LLM、解析、生成和存储等外部技术；没有独立能力含义的空 Use Case 必须删除。
 
 #### 实施单元
 
@@ -558,7 +613,9 @@ Credentialed provider smoke remains an explicit pre-release gate and is not requ
 2. **U2 — Provider 能力层与 DeepSeek：** 建立厂商中立端口、Provider 注册表、DeepSeek 适配器和契约测试；不实现自动故障转移，也不在本单元实现 Kimi。
 3. **U3 — 认证用户上下文：** 在 FastAPI 验证 Clerk Token，并把用户作用域传入服务、仓库和文件存储边界。
 4. **U4 — 持久化流程和文件：** 使用 SQLAlchemy、Alembic、PostgreSQL 测试与对象存储端口，保存对话、提议、决定、版本和导出元数据。
-5. **U5 — 固化并工具化旧能力：** 先用特征测试固定解析、JD 分析、定制和导出行为，再把可靠能力包装成 Agent 工具；移除缺失的 EnhancedLLMService 关键路径依赖。
+5. **U5 — 固化并工具化旧能力：** 补齐解析、JD 分析、定制、证据和导出的特征测试，保持 Agent 工具的类型、状态和读写边界稳定，为后续移动代码建立行为基线。
+10. **U10 — 从 HTTP Route 提取简历操作：** 把 optimize、build、export 等 Route 中的校验、Prompt 策略、能力协调和结果构造迁到 Use Case；Route 只保留鉴权、Schema 转换、状态码和响应头。没有独立调用目标的空 Use Case 和 Port 直接删除。
+11. **U11 — 把确定性规则迁入 Domain：** 把 ATS 评分、技能选择、提议与证据约束等与入口无关的规则迁入 Domain 或 Domain Service；Use Case 改为依赖应用端口，不再直接导入 `infra.*`。
 6. **U6 — 实现持久化 Agent 工作流：** 建立有界 Agent 循环、合法状态转换、提议修订号、幂等确认事务、失败恢复和跨设备续接。
 7. **U7 — 提供认证 API 与可恢复进度流：** 提供创建、恢复、消息、确认、版本和导出接口；流断开后从持久化事件位置继续。
 8. **U8 — 替换为单一对话工作区：** 提供材料状态、对话、结构化差异、接受/拒绝/修改、版本历史、恢复与导出，并使用 Clerk Token 调用后端。
