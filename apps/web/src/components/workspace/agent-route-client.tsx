@@ -28,6 +28,10 @@ export function AgentRouteClient({ runId }: { runId?: string }) {
     client.listRuns().then((result) => { setRuns(result.items); setNextCursor(result.next_cursor); }).catch(() => setError("暂时无法读取对话记录，请稍后重试。")).finally(() => setLoading(false));
   }, [client]);
 
+  useEffect(() => {
+    if (!runId && !loading && runs[0]) router.replace(`/dashboard/resume/agent/${runs[0].id}`);
+  }, [loading, router, runId, runs]);
+
   async function loadMore() {
     if (!client || !nextCursor) return;
     const result = await client.listRuns(nextCursor);
