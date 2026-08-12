@@ -17,21 +17,25 @@ export function useRunController(runId: string, client: RunApi | null) {
   const [snapshot, setSnapshot] = useState<RunSnapshot>();
   const [status, setStatus] = useState<RunControllerStatus>("loading");
   const reloadInFlight = useRef<Promise<void> | null>(null);
+  const reloadQueued = useRef(false);
+  const generation = useRef(0);
   const snapshotRef = useRef<RunSnapshot | undefined>(undefined);
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const applySnapshot = useCallback((next: RunSnapshot) => { snapshotRef.current = next; setSnapshot(next); setStatus("ready"); }, []);
 
   const reload = useCallback(() => {
     if (!client) return Promise.resolve();
-    if (reloadInFlight.current) return reloadInFlight.current;
-    const task = client.getRun(runId).then(applySnapshot).catch((error) => {
+    if (reloadInFlight.current) { reloadQueued.current = true; return reloadInFlight.current; }
+    const requestGeneration = generation.current;
+    const task = client.getRun(runId).then((next) => { if (generation.current === requestGeneration) applySnapshot(next); }).catch((error) => {
+      if (generation.current !== requestGeneration) return;
       setStatus(error instanceof AgentApiError && error.code === "auth_expired" ? "auth-expired" : "error");
-    }).finally(() => { reloadInFlight.current = null; });
+    }).finally(() => { if (reloadInFlight.current !== task) return; reloadInFlight.current = null; if (reloadQueued.current && generation.current === requestGeneration) { reloadQueued.current = false; void reload(); } });
     reloadInFlight.current = task;
     return task;
   }, [applySnapshot, client, runId]);
 
-  useEffect(() => { setStatus("loading"); void reload(); }, [reload]);
+  useEffect(() => { generation.current += 1; reloadInFlight.current = null; reloadQueued.current = false; snapshotRef.current = undefined; setSnapshot(undefined); setStatus("loading"); void reload(); }, [reload]);
   const workflowState = snapshot?.run.state;
   useEffect(() => {
     if (!client || !workflowState || !activeStates.has(workflowState)) return;
@@ -56,8 +60,13 @@ export function useRunController(runId: string, client: RunApi | null) {
 
   const send = async (content: string) => {
     if (!client) return;
-    try { applySnapshot(await client.sendMessage(runId, content)); }
+    const requestGeneration = generation.current;
+    try { const next = await client.sendMessage(runId, content); if (generation.current === requestGeneration) applySnapshot(next); }
     catch (error) { if (error instanceof AgentApiError && error.code === "conflict") { await reload(); setStatus("conflict"); } throw error; }
   };
-  return { snapshot, status, reload, applySnapshot, send };
+  const guardMutation = async <T,>(task: Promise<T>) => {
+    try { return await task; }
+    catch (error) { if (error instanceof AgentApiError && error.code === "conflict") { await reload(); setStatus("conflict"); } throw error; }
+  };
+  return { snapshot, status, reload, applySnapshot, guardMutation, send };
 }

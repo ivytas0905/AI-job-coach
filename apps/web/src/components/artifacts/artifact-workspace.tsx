@@ -79,7 +79,7 @@ export function ArtifactWorkspace({ snapshot, actions }: { snapshot: RunSnapshot
         <Tabs.Content value="history">
           {snapshot.versions.length === 0 ? <p className="empty-copy">接受建议后会生成可恢复的版本。</p> : snapshot.versions.map((version) => <article className="version-row" key={version.id}><div><strong>{version.version_name}</strong><span>版本 {version.version_number}</span></div><button className="button button-secondary" disabled={Boolean(pending) || version.id === snapshot.run.current_version_id} onClick={() => void run(`restore:${version.id}`, () => actions.restoreVersion(version.id, intentFor(`restore:${version.id}`)), "版本已恢复。")}>恢复 {version.version_name}</button></article>)}
           {selectedVersion && <div className="export-actions">{(["pdf", "docx"] as const).map((format) => <button key={format} className="button button-primary" disabled={Boolean(pending)} onClick={() => void run(`export:${selectedVersion.id}:${format}`, () => actions.createExport(selectedVersion.id, format, intentFor(`export:${selectedVersion.id}:${format}`)), `${format.toUpperCase()} 已生成。`)}>导出 {format.toUpperCase()}</button>)}</div>}
-          {snapshot.exports.map((item) => <button key={item.id} className="button button-secondary export-download" onClick={() => void actions.downloadExport(item.id)}>下载 {item.content_type.includes("pdf") ? "PDF" : "DOCX"}</button>)}
+          {snapshot.exports.map((item) => <button key={item.id} className="button button-secondary export-download" disabled={Boolean(pending)} onClick={() => void run(`download:${item.id}`, () => actions.downloadExport(item.id), "下载已开始。")}>下载 {item.content_type.includes("pdf") ? "PDF" : "DOCX"}</button>)}
         </Tabs.Content>
       </div>
     </Tabs.Root>

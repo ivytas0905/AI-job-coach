@@ -61,8 +61,8 @@ export function AgentRouteClient({ runId }: { runId?: string }) {
   const artifacts = runId && client && controller.snapshot ? <ArtifactWorkspace key={controller.snapshot.run.id} snapshot={controller.snapshot} actions={{
     submitResume: (file) => update(client.submitResume(runId, file)),
     submitJobDescription: (content) => update(client.submitJobDescription(runId, content)),
-    decideProposal: (id, decision, revision, intent) => update(client.decideProposal(runId, id, decision, revision, { value: intent })),
-    restoreVersion: (id, intent) => update(client.restoreVersion(runId, id, { value: intent })),
+    decideProposal: (id, decision, revision, intent) => controller.guardMutation(update(client.decideProposal(runId, id, decision, revision, { value: intent }))),
+    restoreVersion: (id, intent) => controller.guardMutation(update(client.restoreVersion(runId, id, { value: intent }))),
     createExport: async (id, format, intent) => { await client.createExport(runId, id, format, { value: intent }); await controller.reload(); },
     downloadExport: download,
   }} /> : <div className="artifact-placeholder"><span className="eyebrow">材料与版本</span><h2>简历工作区</h2><p>创建对话后即可上传材料并管理版本。</p></div>;
