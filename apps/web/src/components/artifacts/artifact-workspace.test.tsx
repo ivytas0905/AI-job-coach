@@ -16,7 +16,7 @@ const snapshot: RunSnapshot = {
 
 function actions(overrides: Partial<ArtifactActions> = {}): ArtifactActions {
   return {
-    submitResume: vi.fn(), submitJobDescription: vi.fn(), recordEvidence: vi.fn(),
+    submitResume: vi.fn(), submitJobDescription: vi.fn(),
     decideProposal: vi.fn(), restoreVersion: vi.fn(), createExport: vi.fn(), downloadExport: vi.fn(),
     ...overrides,
   };

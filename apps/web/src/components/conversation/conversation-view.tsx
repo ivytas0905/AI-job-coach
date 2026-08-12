@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { MessageRecord, RunSnapshot, WorkflowState } from "@/types/agent";
+import type { RunControllerStatus } from "@/hooks/use-run-controller";
 import { Composer } from "./composer";
 
 function Message({ message }: { message: MessageRecord }) {
@@ -10,7 +11,7 @@ function Message({ message }: { message: MessageRecord }) {
 
 const workflowLabels: Record<WorkflowState, string> = { awaiting_resume: "等待上传简历", awaiting_jd: "等待职位描述", analyzing: "正在分析材料", proposal_ready: "修改建议待确认", applying: "正在生成版本", version_ready: "新版本已生成", exporting: "正在导出", completed: "已完成", failed: "需要处理" };
 
-export function ConversationView({ snapshot, status, onSend, signInHref = "/sign-in" }: { snapshot?: RunSnapshot; status: string; onSend: (content: string) => Promise<void>; signInHref?: string }) {
+export function ConversationView({ snapshot, status, onSend, signInHref = "/sign-in" }: { snapshot?: RunSnapshot; status: RunControllerStatus; onSend: (content: string) => Promise<void>; signInHref?: string }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [nearEnd, setNearEnd] = useState(true);
   useEffect(() => { if (nearEnd && scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight; }, [nearEnd, snapshot?.messages.length]);

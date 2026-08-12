@@ -8,7 +8,6 @@ import type { ExportFormat, ProposalDecision, RunSnapshot } from "@/types/agent"
 export interface ArtifactActions {
   submitResume(file: File): Promise<void>;
   submitJobDescription(content: string): Promise<void>;
-  recordEvidence(content: string): Promise<void>;
   decideProposal(id: string, decision: ProposalDecision, revision: number, intent: string): Promise<void>;
   restoreVersion(id: string, intent: string): Promise<void>;
   createExport(id: string, format: ExportFormat, intent: string): Promise<void>;

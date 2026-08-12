@@ -51,20 +51,19 @@ export function AgentRouteClient({ runId }: { runId?: string }) {
   const conversation = runId ? <ConversationView snapshot={controller.snapshot} status={controller.status} onSend={controller.send} signInHref={`/sign-in?redirect_url=${encodeURIComponent(`/dashboard/resume/agent/${runId}`)}`} /> : (
     <div className="route-empty"><span className="eyebrow">新的优化任务</span><h1>准备好让简历更贴近目标岗位了吗？</h1><p>我会先了解你的真实经历，再逐条提出有依据的修改建议。所有改动都由你确认。</p><button className="button button-primary focus-ring" disabled={loading} onClick={createRun}>{loading ? "正在准备…" : "开始一次对话"}</button>{error && <p role="alert" className="inline-error">{error}</p>}</div>
   );
-  const refresh = async <T,>(task: Promise<T>) => { const result = await task; await controller.reload(); return result; };
   const download = async (exportId: string) => {
     if (!client || !runId) return;
     const result = await client.downloadExport(runId, exportId);
     const href = URL.createObjectURL(result.blob);
     const link = document.createElement("a"); link.href = href; link.download = result.filename; link.click(); URL.revokeObjectURL(href);
   };
-  const artifacts = runId && client && controller.snapshot ? <ArtifactWorkspace snapshot={controller.snapshot} actions={{
-    submitResume: (file) => refresh(client.submitResume(runId, file)).then(() => undefined),
-    submitJobDescription: (content) => refresh(client.submitJobDescription(runId, content)).then(() => undefined),
-    recordEvidence: (content) => refresh(client.recordEvidence(runId, content)).then(() => undefined),
-    decideProposal: (id, decision, revision, intent) => refresh(client.decideProposal(runId, id, decision, revision, { value: intent })).then(() => undefined),
-    restoreVersion: (id, intent) => refresh(client.restoreVersion(runId, id, { value: intent })).then(() => undefined),
-    createExport: (id, format, intent) => refresh(client.createExport(runId, id, format, { value: intent })).then(() => undefined),
+  const update = async (task: Promise<import("@/types/agent").RunSnapshot>) => controller.applySnapshot(await task);
+  const artifacts = runId && client && controller.snapshot ? <ArtifactWorkspace key={controller.snapshot.run.id} snapshot={controller.snapshot} actions={{
+    submitResume: (file) => update(client.submitResume(runId, file)),
+    submitJobDescription: (content) => update(client.submitJobDescription(runId, content)),
+    decideProposal: (id, decision, revision, intent) => update(client.decideProposal(runId, id, decision, revision, { value: intent })),
+    restoreVersion: (id, intent) => update(client.restoreVersion(runId, id, { value: intent })),
+    createExport: async (id, format, intent) => { await client.createExport(runId, id, format, { value: intent }); await controller.reload(); },
     downloadExport: download,
   }} /> : <div className="artifact-placeholder"><span className="eyebrow">材料与版本</span><h2>简历工作区</h2><p>创建对话后即可上传材料并管理版本。</p></div>;
   return <WorkspaceShell history={history} conversation={conversation} artifacts={artifacts} />;
