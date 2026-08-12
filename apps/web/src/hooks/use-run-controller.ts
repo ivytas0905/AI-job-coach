@@ -14,7 +14,7 @@ export interface RunApi {
 
 export function useRunController(runId: string, client: RunApi | null) {
   const [snapshot, setSnapshot] = useState<RunSnapshot>();
-  const [status, setStatus] = useState<"loading" | "ready" | "reconnecting" | "error" | "auth-expired">("loading");
+  const [status, setStatus] = useState<"loading" | "ready" | "reconnecting" | "error" | "auth-expired" | "conflict">("loading");
   const reloadInFlight = useRef<Promise<void> | null>(null);
 
   const reload = useCallback(() => {
@@ -49,8 +49,7 @@ export function useRunController(runId: string, client: RunApi | null) {
   const send = async (content: string) => {
     if (!client) return;
     try { setSnapshot(await client.sendMessage(runId, content)); setStatus("ready"); }
-    catch (error) { if (error instanceof AgentApiError && error.code === "conflict") await reload(); throw error; }
+    catch (error) { if (error instanceof AgentApiError && error.code === "conflict") { await reload(); setStatus("conflict"); } throw error; }
   };
   return { snapshot, status, reload, send };
 }
-

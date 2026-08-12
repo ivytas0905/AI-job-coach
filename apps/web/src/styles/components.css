@@ -97,6 +97,8 @@
 .conversation-header h1 { margin: 0; font-size: 1.15rem; }
 .connection-state { color: var(--ink-muted); font-size: 0.78rem; }
 .message-scroll { overflow-y: auto; }
+.jump-latest { position: absolute; right: var(--space-6); bottom: 7.5rem; z-index: 4; }
+.auth-recovery { display: flex; justify-content: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); background: var(--warning-soft); color: var(--ink); font-size: 0.85rem; }
 .message-list { width: min(48rem, 100%); min-height: 100%; margin: 0 auto; padding: var(--space-8) var(--space-6); }
 .message { margin-bottom: var(--space-6); }
 .message p { margin: var(--space-2) 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }

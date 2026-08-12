@@ -44,7 +44,7 @@ export function AgentRouteClient({ runId }: { runId?: string }) {
   }
 
   const history = <RunHistory runs={runs} selectedId={runId} hasMore={Boolean(nextCursor)} onLoadMore={loadMore} />;
-  const conversation = runId ? <ConversationView snapshot={controller.snapshot} status={controller.status} onSend={controller.send} /> : (
+  const conversation = runId ? <ConversationView snapshot={controller.snapshot} status={controller.status} onSend={controller.send} signInHref={`/sign-in?redirect_url=${encodeURIComponent(`/dashboard/resume/agent/${runId}`)}`} /> : (
     <div className="route-empty"><span className="eyebrow">新的优化任务</span><h1>准备好让简历更贴近目标岗位了吗？</h1><p>我会先了解你的真实经历，再逐条提出有依据的修改建议。所有改动都由你确认。</p><button className="button button-primary focus-ring" disabled={loading} onClick={createRun}>{loading ? "正在准备…" : "开始一次对话"}</button>{error && <p role="alert" className="inline-error">{error}</p>}</div>
   );
   const refresh = async <T,>(task: Promise<T>) => { const result = await task; await controller.reload(); return result; };
